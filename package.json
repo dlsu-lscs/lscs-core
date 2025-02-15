@@ -1,0 +1,28 @@
+{
+  "name": "lscs-core",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lscs-core.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dlsu-lscs/lscs-core.git"
+  },
+  "keywords": [
+    "auth",
+    "lscs",
+    "dlsu"
+  ],
+  "author": "La Salle Computer Society",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/dlsu-lscs/lscs-core/issues"
+  },
+  "homepage": "https://github.com/dlsu-lscs/lscs-core#readme",
+  "dependencies": {
+    "axios": "^1.7.9"
+  }
+}
