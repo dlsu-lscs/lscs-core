@@ -3,6 +3,12 @@ This library enables users to utilize the LSCS Core API in NodeJS hassle free.
 
 # Usage
 
+Install with
+```bash
+$ npm install lscs-core
+```
+
+Usage examples
 ```js
 // Initializing an lscs-core instance
 import lscscore from 'lscs-core'
