@@ -13,7 +13,6 @@ import (
 )
 
 func (s *Server) RegisterRoutes(e *echo.Echo) {
-
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -40,11 +39,13 @@ func (s *Server) RegisterRoutes(e *echo.Echo) {
 		TokenLookup:   "header:Authorization:Bearer ",
 		SigningMethod: "HS256",
 	}))
+	protected.Use(middlewares.JWTEmailMiddleware)
+	protected.Use(middlewares.AuthorizationMiddleware(s.db))
 
 	protected.GET("/members", s.memberHandler.GetAllMembersHandler)
 	protected.GET("/committees", s.committeeHandler.GetAllCommitteesHandler)
 	protected.POST("/member", s.memberHandler.GetMemberInfo)
 	protected.POST("/member-id", s.memberHandler.GetMemberInfoByID)
-	protected.POST("check-email", s.memberHandler.CheckEmailHandler)
-	protected.POST("check-id", s.memberHandler.CheckIDIfMember)
+	protected.POST("/check-email", s.memberHandler.CheckEmailHandler)
+	protected.POST("/check-id", s.memberHandler.CheckIDIfMember)
 }

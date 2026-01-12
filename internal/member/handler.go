@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/dlsu-lscs/lscs-core-api/internal/helpers"
 	"github.com/dlsu-lscs/lscs-core-api/internal/repository"
 	"github.com/labstack/echo/v4"
 )
@@ -15,14 +14,6 @@ func (h *Handler) GetMemberInfo(c echo.Context) error {
 	ctx := c.Request().Context()
 	dbconn := h.dbService.GetConnection()
 	q := repository.New(dbconn)
-
-	emailRequestor := c.Get("user_email").(string)
-	isAuthorized := helpers.AuthorizeIfRNDAndAVP(ctx, h.dbService, emailRequestor)
-	if !isAuthorized {
-		// forbidden
-		// only expose the reason why its unauthorized to the server logs (not on client)
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized request."})
-	}
 
 	req := new(EmailRequest)
 
@@ -54,14 +45,6 @@ func (h *Handler) GetMemberInfoByID(c echo.Context) error {
 	ctx := c.Request().Context()
 	dbconn := h.dbService.GetConnection()
 	q := repository.New(dbconn)
-
-	emailRequestor := c.Get("user_email").(string)
-	isAuthorized := helpers.AuthorizeIfRNDAndAVP(ctx, h.dbService, emailRequestor)
-	if !isAuthorized {
-		// forbidden
-		// only expose the reason why its unauthorized to the server logs (not on client)
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized request."})
-	}
 
 	req := new(IdRequest)
 
@@ -95,14 +78,6 @@ func (h *Handler) GetAllMembersHandler(c echo.Context) error {
 	dbconn := h.dbService.GetConnection()
 	queries := repository.New(dbconn)
 
-	emailRequestor := c.Get("user_email").(string)
-	isAuthorized := helpers.AuthorizeIfRNDAndAVP(ctx, h.dbService, emailRequestor)
-	if !isAuthorized {
-		// forbidden
-		// only expose the reason why its unauthorized to the server logs (not on client)
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized request."})
-	}
-
 	members, err := queries.ListMembers(ctx)
 	if err != nil {
 		slog.Error("Failed to list members", "err", err)
@@ -119,14 +94,6 @@ func (h *Handler) GetAllMembersHandler(c echo.Context) error {
 
 func (h *Handler) CheckEmailHandler(c echo.Context) error {
 	var req EmailRequest
-
-	emailRequestor := c.Get("user_email").(string)
-	isAuthorized := helpers.AuthorizeIfRNDAndAVP(c.Request().Context(), h.dbService, emailRequestor)
-	if !isAuthorized {
-		// forbidden
-		// only expose the reason why its unauthorized to the server logs (not on client)
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized request."})
-	}
 
 	if err := c.Bind(&req); err != nil {
 		slog.Error("invalid request body")
@@ -166,14 +133,6 @@ func (h *Handler) CheckEmailHandler(c echo.Context) error {
 func (h *Handler) CheckIDIfMember(c echo.Context) error {
 	var req IdRequest
 
-	emailRequestor := c.Get("user_email").(string)
-	isAuthorized := helpers.AuthorizeIfRNDAndAVP(c.Request().Context(), h.dbService, emailRequestor)
-	if !isAuthorized {
-		// forbidden
-		// only expose the reason why its unauthorized to the server logs (not on client)
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized request."})
-	}
-
 	if err := c.Bind(&req); err != nil {
 		slog.Error("invalid request body")
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
@@ -202,4 +161,3 @@ func (h *Handler) CheckIDIfMember(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, response)
 }
-

@@ -17,7 +17,6 @@ import (
 )
 
 type RequestKeyRequest struct {
-	Email         string `json:"email" validate:"required,email"`
 	Project       string `json:"project"`
 	AllowedOrigin string `json:"allowed_origin"`
 	IsDev         bool   `json:"is_dev"`
@@ -47,7 +46,8 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 	if !isAuthorized {
 		// forbidden
 		// only expose the reason why its unauthorized to the server logs (not on client)
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized request."})
+		slog.Error(fmt.Sprintf("User %s has unauthorized position or committee", emailRequestor))
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User has unauthorized position or committee"})
 	}
 
 	var req RequestKeyRequest
@@ -56,13 +56,13 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "cannot read body"})
 	}
 
-	memberInfo, err := q.GetMemberInfo(ctx, req.Email)
+	memberInfo, err := q.GetMemberInfo(ctx, emailRequestor)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			response := map[string]string{
 				"error": "Not an LSCS member",
 				"state": "absent",
-				"email": req.Email,
+				"email": emailRequestor,
 			}
 			return c.JSON(http.StatusNotFound, response)
 		}
