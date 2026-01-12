@@ -41,48 +41,33 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 	q := repository.New(dbconn)
 	ctx := c.Request().Context()
 
-	// Get email from context
-	email := c.Get("user_email").(string)
+	// NOTE: this is set via google middleware
+	emailRequestor := c.Get("user_email").(string)
+	isAuthorized := helpers.AuthorizeIfRNDAndAVP(c.Request().Context(), h.dbService, emailRequestor)
+	if !isAuthorized {
+		// forbidden
+		// only expose the reason why its unauthorized to the server logs (not on client)
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized request."})
+	}
 
-	// Parse body
 	var req RequestKeyRequest
 	if err := c.Bind(&req); err != nil {
 		slog.Error("cannot read body", "error", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "cannot read body"})
 	}
 
-	// Check if user is an LSCS member and in RND
-	memberInfo, err := q.GetMemberInfo(ctx, email)
+	memberInfo, err := q.GetMemberInfo(ctx, req.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			response := map[string]string{
 				"error": "Not an LSCS member",
 				"state": "absent",
-				"email": email,
+				"email": req.Email,
 			}
 			return c.JSON(http.StatusNotFound, response)
 		}
 		slog.Error("error checking email", "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-	}
-
-	// only allow RND members and those that are AVPs and above
-	if helpers.NullStringToString(memberInfo.CommitteeName) != "Research and Development" {
-		return c.JSON(http.StatusForbidden, map[string]string{"error": "User is not a member of Research and Development"})
-	}
-
-	allowedPositions := map[string]bool{
-		"PRES": true,
-		"EVP":  true,
-		"VP":   true,
-		"AVP":  true,
-		"CT":   false,
-		"JO":   false,
-		"MEM":  false,
-	}
-	pos := helpers.NullStringToString(memberInfo.PositionID)
-	if !allowedPositions[pos] {
-		return c.JSON(http.StatusForbidden, map[string]string{"error": "User must be AVP or higher"})
 	}
 
 	var allowedOriginForDB sql.NullString
@@ -92,6 +77,7 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 		allowedOriginForDB = sql.NullString{Valid: false}
 		isDevForDB = false
 	} else if req.IsDev {
+		// TODO: might also want to include the LSCS dev server here instead of just localhost
 		if !strings.HasPrefix(req.AllowedOrigin, "http://localhost") {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "For dev keys, allowed_origin must start with http://localhost"})
 		}
@@ -125,18 +111,15 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 		isDevForDB = false
 	}
 
-	// Generate JWT
 	tokenString, err := h.authService.GenerateJWT(memberInfo.Email)
 	if err != nil {
 		slog.Error("failed to generate token", "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating token"})
 	}
 
-	// Hash the token
 	hash := sha256.Sum256([]byte(tokenString))
-	hashStr := hex.EncodeToString(hash[:])
+	hashedTokenString := hex.EncodeToString(hash[:])
 
-	// Handle nullable project field
 	var projectForDB sql.NullString
 	if req.Project != "" {
 		projectForDB = sql.NullString{String: req.Project, Valid: true}
@@ -144,10 +127,9 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 		projectForDB = sql.NullString{Valid: false}
 	}
 
-	// Store API key
 	params := repository.StoreAPIKeyParams{
 		MemberEmail:   memberInfo.Email,
-		ApiKeyHash:    hashStr,
+		ApiKeyHash:    hashedTokenString,
 		Project:       projectForDB,
 		AllowedOrigin: allowedOriginForDB,
 		IsDev:         isDevForDB,

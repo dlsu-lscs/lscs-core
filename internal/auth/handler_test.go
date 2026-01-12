@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/dlsu-lscs/lscs-core-api/internal/member"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
@@ -40,7 +41,7 @@ func (m *mockDBService) GetConnection() *sql.DB {
 func TestRequestKeyHandler(t *testing.T) {
 	t.Run("success - RND member", func(t *testing.T) {
 		e := echo.New()
-		reqBody := EmailRequest{Email: "test@dlsu.edu.ph"}
+		reqBody := member.EmailRequest{Email: "test@dlsu.edu.ph"}
 		jsonBody, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest(http.MethodPost, "/request-key", bytes.NewReader(jsonBody))
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -74,7 +75,7 @@ func TestRequestKeyHandler(t *testing.T) {
 
 	t.Run("fail - non-RND member", func(t *testing.T) {
 		e := echo.New()
-		reqBody := EmailRequest{Email: "test@dlsu.edu.ph"}
+		reqBody := member.EmailRequest{Email: "test@dlsu.edu.ph"}
 		jsonBody, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest(http.MethodPost, "/request-key", bytes.NewReader(jsonBody))
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -101,7 +102,7 @@ func TestRequestKeyHandler(t *testing.T) {
 
 	t.Run("fail - not an LSCS member", func(t *testing.T) {
 		e := echo.New()
-		reqBody := EmailRequest{Email: "test@dlsu.edu.ph"}
+		reqBody := member.EmailRequest{Email: "test@dlsu.edu.ph"}
 		jsonBody, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest(http.MethodPost, "/request-key", bytes.NewReader(jsonBody))
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)

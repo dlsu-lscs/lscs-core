@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
+	"strconv"
 
+	"github.com/dlsu-lscs/lscs-core-api/internal/helpers"
 	"github.com/dlsu-lscs/lscs-core-api/internal/repository"
 	"github.com/labstack/echo/v4"
 )
@@ -13,6 +15,14 @@ func (h *Handler) GetMemberInfo(c echo.Context) error {
 	ctx := c.Request().Context()
 	dbconn := h.dbService.GetConnection()
 	q := repository.New(dbconn)
+
+	emailRequestor := c.Get("user_email").(string)
+	isAuthorized := helpers.AuthorizeIfRNDAndAVP(ctx, h.dbService, emailRequestor)
+	if !isAuthorized {
+		// forbidden
+		// only expose the reason why its unauthorized to the server logs (not on client)
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized request."})
+	}
 
 	req := new(EmailRequest)
 
@@ -23,8 +33,16 @@ func (h *Handler) GetMemberInfo(c echo.Context) error {
 
 	memberInfo, err := q.GetMemberInfo(ctx, req.Email)
 	if err != nil {
-		slog.Error("email is not an LSCS member", "err", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Email is not an LSCS member"})
+		if err == sql.ErrNoRows {
+			response := map[string]string{
+				"error": "Not an LSCS member",
+				"state": "absent",
+				"email": req.Email,
+			}
+			return c.JSON(http.StatusNotFound, response)
+		}
+		slog.Error("error checking email", "error", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
 	response := toFullInfoMemberResponse(memberInfo)
@@ -37,6 +55,14 @@ func (h *Handler) GetMemberInfoByID(c echo.Context) error {
 	dbconn := h.dbService.GetConnection()
 	q := repository.New(dbconn)
 
+	emailRequestor := c.Get("user_email").(string)
+	isAuthorized := helpers.AuthorizeIfRNDAndAVP(ctx, h.dbService, emailRequestor)
+	if !isAuthorized {
+		// forbidden
+		// only expose the reason why its unauthorized to the server logs (not on client)
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized request."})
+	}
+
 	req := new(IdRequest)
 
 	if err := c.Bind(req); err != nil {
@@ -46,8 +72,17 @@ func (h *Handler) GetMemberInfoByID(c echo.Context) error {
 
 	memberInfo, err := q.GetMemberInfoById(ctx, int32(req.Id))
 	if err != nil {
-		slog.Error("id is not an LSCS member", "err", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "id is not an LSCS member"})
+		if err == sql.ErrNoRows {
+			slog.Error("id is not an LSCS member", "err", err)
+			response := map[string]string{
+				"error": "Not an LSCS member",
+				"state": "absent",
+				"id":    strconv.Itoa(req.Id),
+			}
+			return c.JSON(http.StatusNotFound, response)
+		}
+		slog.Error("error checking id", "error", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
 	response := toFullInfoMemberResponse(repository.GetMemberInfoRow(memberInfo))
@@ -59,6 +94,14 @@ func (h *Handler) GetAllMembersHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 	dbconn := h.dbService.GetConnection()
 	queries := repository.New(dbconn)
+
+	emailRequestor := c.Get("user_email").(string)
+	isAuthorized := helpers.AuthorizeIfRNDAndAVP(ctx, h.dbService, emailRequestor)
+	if !isAuthorized {
+		// forbidden
+		// only expose the reason why its unauthorized to the server logs (not on client)
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized request."})
+	}
 
 	members, err := queries.ListMembers(ctx)
 	if err != nil {
@@ -76,6 +119,14 @@ func (h *Handler) GetAllMembersHandler(c echo.Context) error {
 
 func (h *Handler) CheckEmailHandler(c echo.Context) error {
 	var req EmailRequest
+
+	emailRequestor := c.Get("user_email").(string)
+	isAuthorized := helpers.AuthorizeIfRNDAndAVP(c.Request().Context(), h.dbService, emailRequestor)
+	if !isAuthorized {
+		// forbidden
+		// only expose the reason why its unauthorized to the server logs (not on client)
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized request."})
+	}
 
 	if err := c.Bind(&req); err != nil {
 		slog.Error("invalid request body")
@@ -115,6 +166,14 @@ func (h *Handler) CheckEmailHandler(c echo.Context) error {
 func (h *Handler) CheckIDIfMember(c echo.Context) error {
 	var req IdRequest
 
+	emailRequestor := c.Get("user_email").(string)
+	isAuthorized := helpers.AuthorizeIfRNDAndAVP(c.Request().Context(), h.dbService, emailRequestor)
+	if !isAuthorized {
+		// forbidden
+		// only expose the reason why its unauthorized to the server logs (not on client)
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized request."})
+	}
+
 	if err := c.Bind(&req); err != nil {
 		slog.Error("invalid request body")
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
@@ -143,3 +202,4 @@ func (h *Handler) CheckIDIfMember(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, response)
 }
+
