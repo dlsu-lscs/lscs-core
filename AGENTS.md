@@ -207,12 +207,12 @@ This creates a new SQL file in `migrations/` with `-- +goose Up` and `-- +goose 
 
 ### Migration Commands
 
-| Command | Description |
-|---------|-------------|
-| `make migrate-up` | Run all pending migrations |
-| `make migrate-down` | Rollback the last migration |
-| `make migrate-status` | Show current migration status |
-| `make migrate-create` | Create a new migration file |
+| Command                 | Description                                 |
+| ----------------------- | ------------------------------------------- |
+| `make migrate-up`       | Run all pending migrations                  |
+| `make migrate-down`     | Rollback the last migration                 |
+| `make migrate-status`   | Show current migration status               |
+| `make migrate-create`   | Create a new migration file                 |
 | `make migrate-baseline` | Mark baseline as applied (for existing DBs) |
 
 ### Migration Best Practices
@@ -236,6 +236,6 @@ logs/<timestamp>-phase<X>-<descriptive-title>.md
 - **Title**: kebab-case summary of what changed
 
 Examples:
+
 - `logs/20260127-2200-phase1-fix-security-add-validation.md`
 - `logs/20260127-2330-phase2-add-swagger-docs-monorepo-structure.md`
-

@@ -167,22 +167,23 @@ All schema changes across phases are listed here for reference. Each will be imp
 
 #### New Tables
 
-| Table | Phase | Description |
-|-------|-------|-------------|
-| `sessions` | Phase 3 | Web UI session management |
-| `roles` | Phase 4 | System-level roles (ADMIN, MODERATOR) |
-| `member_roles` | Phase 4 | Many-to-many: members ↔ roles |
-| `registration_requests` | Phase 8 | Self-registration approval queue |
+| Table                   | Phase   | Description                           |
+| ----------------------- | ------- | ------------------------------------- |
+| `sessions`              | Phase 3 | Web UI session management             |
+| `roles`                 | Phase 4 | System-level roles (ADMIN, MODERATOR) |
+| `member_roles`          | Phase 4 | Many-to-many: members ↔ roles         |
+| `registration_requests` | Phase 8 | Self-registration approval queue      |
 
 #### Schema Modifications
 
-| Table | Change | Phase | Migration |
-|-------|--------|-------|-----------|
+| Table     | Change                       | Phase   | Migration                                                             |
+| --------- | ---------------------------- | ------- | --------------------------------------------------------------------- |
 | `members` | Add `image_url VARCHAR(512)` | Phase 5 | `ALTER TABLE members ADD COLUMN image_url VARCHAR(512) DEFAULT NULL;` |
 
 #### Complete New Table Schemas
 
 **sessions** (Phase 3):
+
 ```sql
 CREATE TABLE sessions (
     id VARCHAR(64) PRIMARY KEY,
@@ -199,6 +200,7 @@ CREATE TABLE sessions (
 ```
 
 **roles** (Phase 4):
+
 ```sql
 CREATE TABLE roles (
     id VARCHAR(20) PRIMARY KEY,
@@ -213,6 +215,7 @@ INSERT INTO roles (id, name, description) VALUES
 ```
 
 **member_roles** (Phase 4):
+
 ```sql
 CREATE TABLE member_roles (
     member_id INT NOT NULL,
@@ -227,6 +230,7 @@ CREATE TABLE member_roles (
 ```
 
 **registration_requests** (Phase 8 - Future):
+
 ```sql
 CREATE TABLE registration_requests (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -299,14 +303,14 @@ migrations/
 
 The system uses **two separate auth mechanisms**:
 
-| Aspect | Web UI Sessions | API Keys (JWT) |
-|--------|-----------------|----------------|
-| **For** | LSCS members using web UI | External projects (RND) consuming API |
-| **Storage** | `sessions` table | `api_keys` table (hash only) |
-| **Transport** | httpOnly cookie | Bearer token header |
-| **Lifetime** | 24h (sliding) or 30d (remember me) | 30d (dev) / 1yr (prod) |
-| **Revocation** | Delete session record | Delete api_key record |
-| **Refresh** | Sliding expiration | None (request new key) |
+| Aspect         | Web UI Sessions                    | API Keys (JWT)                        |
+| -------------- | ---------------------------------- | ------------------------------------- |
+| **For**        | LSCS members using web UI          | External projects (RND) consuming API |
+| **Storage**    | `sessions` table                   | `api_keys` table (hash only)          |
+| **Transport**  | httpOnly cookie                    | Bearer token header                   |
+| **Lifetime**   | 24h (sliding) or 30d (remember me) | 30d (dev) / 1yr (prod)                |
+| **Revocation** | Delete session record              | Delete api_key record                 |
+| **Refresh**    | Sliding expiration                 | None (request new key)                |
 
 ### 3.1 Session Management
 
@@ -318,12 +322,14 @@ The system uses **two separate auth mechanisms**:
 - [ ] Support multiple active sessions per user (different devices)
 
 **Session Configuration**:
+
 - Default duration: 24 hours
 - "Remember Me" duration: 30 days
 - Sliding expiration threshold: Extend if < 12h remaining (for 24h sessions)
 - Cleanup job: Run every hour, delete sessions where `expires_at < NOW()`
 
 **Sliding Expiration Logic**:
+
 ```go
 // On each authenticated request:
 // 1. If (expires_at - now) < (session_duration / 2):
@@ -344,6 +350,7 @@ The system uses **two separate auth mechanisms**:
 - [ ] Add `/auth/me` endpoint (get current user from session)
 
 **Cookie Settings**:
+
 ```go
 cookie := &http.Cookie{
     Name:     "session_id",
@@ -531,6 +538,7 @@ cookie := &http.Cookie{
 - [ ] Copy key to clipboard (on creation only - keys shown once)
 
 **API Endpoints needed**:
+
 - `GET /api-keys` - List user's API keys (without the actual key, just metadata)
 - `DELETE /api-keys/:id` - Revoke an API key
 
