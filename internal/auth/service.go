@@ -2,8 +2,26 @@ package auth
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+)
+
+// KeyType represents the type of API key being generated
+type KeyType int
+
+const (
+	KeyTypeDev   KeyType = iota // development key - 30 days default
+	KeyTypeProd                 // production key - 365 days default
+	KeyTypeAdmin                // admin key - no expiration
+)
+
+// default expiration durations
+const (
+	defaultDevExpiryDays  = 30
+	defaultProdExpiryDays = 365
 )
 
 // JwtCustomClaims are custom claims extending default ones.
@@ -15,34 +33,73 @@ type JwtCustomClaims struct {
 // Service is the interface for the auth service.
 // It can be used for mocking.
 type Service interface {
-	GenerateJWT(email string) (string, error)
+	GenerateJWT(email string, keyType KeyType) (string, *time.Time, error)
 }
 
 type service struct {
-	jwtSecret []byte
+	jwtSecret      []byte
+	devExpiryDays  int
+	prodExpiryDays int
 }
 
 // NewService creates a new auth service.
 func NewService(secret string) Service {
+	devExpiry := defaultDevExpiryDays
+	prodExpiry := defaultProdExpiryDays
+
+	// allow overriding expiration via environment variables
+	if envDevExpiry := os.Getenv("JWT_DEV_EXPIRY_DAYS"); envDevExpiry != "" {
+		if days, err := strconv.Atoi(envDevExpiry); err == nil && days > 0 {
+			devExpiry = days
+		}
+	}
+	if envProdExpiry := os.Getenv("JWT_PROD_EXPIRY_DAYS"); envProdExpiry != "" {
+		if days, err := strconv.Atoi(envProdExpiry); err == nil && days > 0 {
+			prodExpiry = days
+		}
+	}
+
 	return &service{
-		jwtSecret: []byte(secret),
+		jwtSecret:      []byte(secret),
+		devExpiryDays:  devExpiry,
+		prodExpiryDays: prodExpiry,
 	}
 }
 
-// GenerateJWT generates a new JWT token and returns it as a string, as well as the error if has any.
-func (s *service) GenerateJWT(email string) (string, error) {
+// GenerateJWT generates a new JWT token with appropriate expiration based on key type.
+// returns the token string, expiration time (nil for admin keys), and error if any.
+func (s *service) GenerateJWT(email string, keyType KeyType) (string, *time.Time, error) {
+	now := time.Now()
 	claims := &JwtCustomClaims{
 		Email:            email,
 		RegisteredClaims: jwt.RegisteredClaims{},
+	}
+
+	var expiresAt *time.Time
+
+	switch keyType {
+	case KeyTypeDev:
+		exp := now.Add(time.Duration(s.devExpiryDays) * 24 * time.Hour)
+		expiresAt = &exp
+		claims.RegisteredClaims.ExpiresAt = jwt.NewNumericDate(exp)
+		claims.RegisteredClaims.IssuedAt = jwt.NewNumericDate(now)
+	case KeyTypeProd:
+		exp := now.Add(time.Duration(s.prodExpiryDays) * 24 * time.Hour)
+		expiresAt = &exp
+		claims.RegisteredClaims.ExpiresAt = jwt.NewNumericDate(exp)
+		claims.RegisteredClaims.IssuedAt = jwt.NewNumericDate(now)
+	case KeyTypeAdmin:
+		// admin keys do not expire
+		claims.RegisteredClaims.IssuedAt = jwt.NewNumericDate(now)
+		expiresAt = nil
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	tokenString, err := token.SignedString(s.jwtSecret)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate token: %w", err)
+		return "", nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	return tokenString, nil
+	return tokenString, expiresAt, nil
 }
-

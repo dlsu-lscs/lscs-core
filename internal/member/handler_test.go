@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/stretchr/testify/assert"
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 )
 
 // mockDBService is a mock implementation of the database.Service interface.
@@ -30,6 +30,48 @@ func (m *mockDBService) GetConnection() *sql.DB {
 	return m.db
 }
 
+// helper to create member info rows with 18 columns matching GetMemberInfo query
+func createMemberInfoRow(email, fullName string) *sqlmock.Rows {
+	return sqlmock.NewRows([]string{
+		"id", "email", "full_name", "nickname",
+		"committee_id", "committee_name",
+		"division_id", "division_name",
+		"position_id", "position_name",
+		"house_name",
+		"contact_number", "college", "program",
+		"interests", "discord", "fb_link", "telegram",
+	}).AddRow(
+		1, email, fullName, nil,
+		"RND", "Research and Development",
+		"INT", "Internal",
+		"MEM", "Member",
+		"Gell-Mann",
+		nil, "CCS", "CS-ST",
+		nil, nil, nil, nil,
+	)
+}
+
+// helper to create member info by ID rows with 18 columns matching GetMemberInfoById query
+func createMemberInfoByIdRow(id int, email, fullName string) *sqlmock.Rows {
+	return sqlmock.NewRows([]string{
+		"id", "email", "full_name", "nickname",
+		"committee_id", "committee_name",
+		"division_id", "division_name",
+		"position_id", "position_name",
+		"house_name",
+		"contact_number", "college", "program",
+		"interests", "discord", "fb_link", "telegram",
+	}).AddRow(
+		id, email, fullName, nil,
+		"RND", "Research and Development",
+		"INT", "Internal",
+		"MEM", "Member",
+		"Gell-Mann",
+		nil, "CCS", "CS-ST",
+		nil, nil, nil, nil,
+	)
+}
+
 func TestGetMemberInfo(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		e := echo.New()
@@ -44,8 +86,7 @@ func TestGetMemberInfo(t *testing.T) {
 		assert.NoError(t, err)
 		defer db.Close()
 
-		rows := sqlmock.NewRows([]string{"email", "full_name", "committee_name", "division_name", "position_name", "committee_id", "division_id", "house_name"}).
-			AddRow(reqBody.Email, "Test User", "RND", "INT", "Trainee", "RND", "INT", "Gell-Mann")
+		rows := createMemberInfoRow(reqBody.Email, "Test User")
 		mock.ExpectQuery("SELECT (.+) FROM members m").WithArgs(reqBody.Email).WillReturnRows(rows)
 
 		dbService := &mockDBService{db: db}
@@ -75,7 +116,28 @@ func TestGetMemberInfo(t *testing.T) {
 		h := NewHandler(dbService)
 
 		if assert.NoError(t, h.GetMemberInfo(c)) {
-			assert.Equal(t, http.StatusInternalServerError, rec.Code)
+			assert.Equal(t, http.StatusNotFound, rec.Code)
+		}
+	})
+
+	t.Run("validation error - invalid email", func(t *testing.T) {
+		e := echo.New()
+		reqBody := EmailRequest{Email: "not-an-email"}
+		jsonBody, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/member", bytes.NewReader(jsonBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		db, _, err := sqlmock.New()
+		assert.NoError(t, err)
+		defer db.Close()
+
+		dbService := &mockDBService{db: db}
+		h := NewHandler(dbService)
+
+		if assert.NoError(t, h.GetMemberInfo(c)) {
+			assert.Equal(t, http.StatusBadRequest, rec.Code)
 		}
 	})
 }
@@ -94,8 +156,7 @@ func TestGetMemberInfoByID(t *testing.T) {
 		assert.NoError(t, err)
 		defer db.Close()
 
-		rows := sqlmock.NewRows([]string{"id", "email", "full_name", "committee_name", "division_name", "position_name", "committee_id", "division_id", "house_name"}).
-			AddRow(123, "test@dlsu.edu.ph", "Test User", "RND", "INT", "Trainee", "RND", "INT", "Gell-Mann")
+		rows := createMemberInfoByIdRow(123, "test@dlsu.edu.ph", "Test User")
 		mock.ExpectQuery("SELECT (.+) FROM members m").WithArgs(int32(reqBody.Id)).WillReturnRows(rows)
 
 		dbService := &mockDBService{db: db}
@@ -125,6 +186,27 @@ func TestGetMemberInfoByID(t *testing.T) {
 		h := NewHandler(dbService)
 
 		if assert.NoError(t, h.GetMemberInfoByID(c)) {
+			assert.Equal(t, http.StatusNotFound, rec.Code)
+		}
+	})
+
+	t.Run("validation error - invalid id", func(t *testing.T) {
+		e := echo.New()
+		reqBody := IdRequest{Id: 0} // invalid: must be > 0
+		jsonBody, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/member-id", bytes.NewReader(jsonBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		db, _, err := sqlmock.New()
+		assert.NoError(t, err)
+		defer db.Close()
+
+		dbService := &mockDBService{db: db}
+		h := NewHandler(dbService)
+
+		if assert.NoError(t, h.GetMemberInfoByID(c)) {
 			assert.Equal(t, http.StatusBadRequest, rec.Code)
 		}
 	})
@@ -140,8 +222,15 @@ func TestGetAllMembersHandler(t *testing.T) {
 	assert.NoError(t, err)
 	defer db.Close()
 
-	rows := sqlmock.NewRows([]string{"id", "full_name", "nickname", "email", "telegram", "position_id", "committee_id", "college", "program", "discord", "interests", "contact_number", "fb_link", "house_name"}).
-		AddRow(1, "Test User 1", "Test1", "test1@dlsu.edu.ph", "", "MEM", "RND", "CCS", "CS-ST", "", "", "", "", "Gell-Mann")
+	rows := sqlmock.NewRows([]string{
+		"id", "full_name", "nickname", "email", "telegram",
+		"position_id", "committee_id", "college", "program",
+		"discord", "interests", "contact_number", "fb_link", "house_name",
+	}).AddRow(
+		1, "Test User 1", nil, "test1@dlsu.edu.ph", nil,
+		"MEM", "RND", "CCS", "CS-ST",
+		nil, nil, nil, nil, "Gell-Mann",
+	)
 	mock.ExpectQuery("SELECT (.+) FROM members m").WillReturnRows(rows)
 
 	dbService := &mockDBService{db: db}

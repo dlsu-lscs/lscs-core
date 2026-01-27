@@ -1,0 +1,54 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    restart: always
+    environment:
+      # App Settings
+      PORT: 8080
+      GO_ENV: production
+      JWT_SECRET: ${JWT_SECRET} # You must set this in Dokploy's "Environment" tab
+      
+      # Database Connection (Internal)
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_NAME: ${DB_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal_net
+    # Dokploy (and Traefik) usually detect the exposed port, 
+    # but mapping it explicitly ensures it works if you use Host networking or specific proxies.
+    ports:
+      - "8080:8080" 
+
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      # Automatically runs schema.sql on the FIRST container startup
+      - ./schema.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - internal_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:
+
+networks:
+  internal_net:

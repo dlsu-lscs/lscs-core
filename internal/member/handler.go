@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/dlsu-lscs/lscs-core-api/internal/helpers"
 	"github.com/dlsu-lscs/lscs-core-api/internal/repository"
 	"github.com/labstack/echo/v4"
 )
@@ -17,9 +18,8 @@ func (h *Handler) GetMemberInfo(c echo.Context) error {
 
 	req := new(EmailRequest)
 
-	if err := c.Bind(req); err != nil {
-		slog.Error("Failed to parse request body", "err", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	if err := helpers.BindAndValidate(c, req); err != nil {
+		return err
 	}
 
 	memberInfo, err := q.GetMemberInfo(ctx, req.Email)
@@ -48,9 +48,8 @@ func (h *Handler) GetMemberInfoByID(c echo.Context) error {
 
 	req := new(IdRequest)
 
-	if err := c.Bind(req); err != nil {
-		slog.Error("Failed to parse request body", "err", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	if err := helpers.BindAndValidate(c, req); err != nil {
+		return err
 	}
 
 	memberInfo, err := q.GetMemberInfoById(ctx, int32(req.Id))
@@ -95,14 +94,8 @@ func (h *Handler) GetAllMembersHandler(c echo.Context) error {
 func (h *Handler) CheckEmailHandler(c echo.Context) error {
 	var req EmailRequest
 
-	if err := c.Bind(&req); err != nil {
-		slog.Error("invalid request body")
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
-	}
-
-	if req.Email == "" {
-		slog.Error("email is required")
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Email is required"})
+	if err := helpers.BindAndValidate(c, &req); err != nil {
+		return err
 	}
 
 	ctx := c.Request().Context()
@@ -133,9 +126,8 @@ func (h *Handler) CheckEmailHandler(c echo.Context) error {
 func (h *Handler) CheckIDIfMember(c echo.Context) error {
 	var req IdRequest
 
-	if err := c.Bind(&req); err != nil {
-		slog.Error("invalid request body")
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+	if err := helpers.BindAndValidate(c, &req); err != nil {
+		return err
 	}
 
 	dbconn := h.dbService.GetConnection()

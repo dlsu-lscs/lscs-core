@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
@@ -50,7 +50,8 @@ func New() Service {
 	if err != nil {
 		// This will not be a connection error, but a DSN parse error or
 		// another initialization error.
-		log.Fatal(err)
+		slog.Error("failed to open database connection", "error", err)
+		return nil
 	}
 	db.SetConnMaxLifetime(0)
 	db.SetMaxIdleConns(50)
@@ -75,7 +76,7 @@ func (s *service) Health() map[string]string {
 	if err != nil {
 		stats["status"] = "down"
 		stats["error"] = fmt.Sprintf("db down: %v", err)
-		log.Fatalf("db down: %v", err) // Log the error and terminate the program
+		slog.Error("database health check failed", "error", err)
 		return stats
 	}
 
@@ -117,7 +118,7 @@ func (s *service) Health() map[string]string {
 // If the connection is successfully closed, it returns nil.
 // If an error occurs while closing the connection, it returns the error.
 func (s *service) Close() error {
-	log.Printf("Disconnected from database: %s", dbname)
+	slog.Info("disconnected from database", "database", dbname)
 	return s.db.Close()
 }
 

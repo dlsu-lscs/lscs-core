@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/dlsu-lscs/lscs-core-api/internal/auth"
 	"github.com/dlsu-lscs/lscs-core-api/internal/middlewares"
@@ -12,11 +13,27 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
+// getAllowedOrigins returns the list of allowed CORS origins from environment.
+// defaults to restrictive localhost-only in development if not set.
+func getAllowedOrigins() []string {
+	originsEnv := os.Getenv("ALLOWED_ORIGINS")
+	if originsEnv == "" {
+		// default to restrictive origins if not configured
+		return []string{"http://localhost:3000"}
+	}
+	origins := strings.Split(originsEnv, ",")
+	// trim whitespace from each origin
+	for i, origin := range origins {
+		origins[i] = strings.TrimSpace(origin)
+	}
+	return origins
+}
+
 func (s *Server) RegisterRoutes(e *echo.Echo) {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"https://*", "http://*"},
+		AllowOrigins: getAllowedOrigins(),
 		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentLength, echo.HeaderAcceptEncoding, echo.HeaderContentType, echo.HeaderAuthorization},
 	}))

@@ -10,7 +10,7 @@ type EmailRequest struct {
 }
 
 type IdRequest struct {
-	Id int `json:"id" validate:"required,id"`
+	Id int `json:"id" validate:"required,gt=0"`
 }
 
 type FullInfoMemberResponse struct {

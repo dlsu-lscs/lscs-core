@@ -17,8 +17,8 @@ import (
 )
 
 type RequestKeyRequest struct {
-	Project       string `json:"project"`
-	AllowedOrigin string `json:"allowed_origin"`
+	Project       string `json:"project" validate:"omitempty,max=255"`
+	AllowedOrigin string `json:"allowed_origin" validate:"omitempty,url"`
 	IsDev         bool   `json:"is_dev"`
 	IsAdmin       bool   `json:"is_admin"`
 }
@@ -41,7 +41,12 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	// NOTE: this is set via google middleware
-	emailRequestor := c.Get("user_email").(string)
+	emailRequestor, ok := c.Get("user_email").(string)
+	if !ok || emailRequestor == "" {
+		slog.Error("user_email not found in context")
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
 	isAuthorized := helpers.AuthorizeIfRNDAndAVP(c.Request().Context(), h.dbService, emailRequestor)
 	if !isAuthorized {
 		// forbidden
@@ -51,9 +56,8 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 	}
 
 	var req RequestKeyRequest
-	if err := c.Bind(&req); err != nil {
-		slog.Error("cannot read body", "error", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "cannot read body"})
+	if err := helpers.BindAndValidate(c, &req); err != nil {
+		return err
 	}
 
 	memberInfo, err := q.GetMemberInfo(ctx, emailRequestor)
@@ -71,22 +75,21 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 	}
 
 	var allowedOriginForDB sql.NullString
-	var isDevForDB bool
+	var keyType KeyType
 
 	if req.IsAdmin {
 		allowedOriginForDB = sql.NullString{Valid: false}
-		isDevForDB = false
+		keyType = KeyTypeAdmin
 	} else if req.IsDev {
 		// TODO: might also want to include the LSCS dev server here instead of just localhost
 		if !strings.HasPrefix(req.AllowedOrigin, "http://localhost") {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "For dev keys, allowed_origin must start with http://localhost"})
 		}
 		allowedOriginForDB = sql.NullString{Valid: false}
-		isDevForDB = true
+		keyType = KeyTypeDev
 	} else {
-		// Production key
-		// TODO: if "is_dev: true" (have expiry time for API_KEY token)
-		// TODO: only "is_admin: true" API_KEY do not expire
+		// production key
+		keyType = KeyTypeProd
 		if req.AllowedOrigin == "" {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "allowed_origin is required for production keys"})
 		}
@@ -108,10 +111,9 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 		}
 
 		allowedOriginForDB = sql.NullString{String: req.AllowedOrigin, Valid: true}
-		isDevForDB = false
 	}
 
-	tokenString, err := h.authService.GenerateJWT(memberInfo.Email)
+	tokenString, expiresAt, err := h.authService.GenerateJWT(memberInfo.Email, keyType)
 	if err != nil {
 		slog.Error("failed to generate token", "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating token"})
@@ -127,14 +129,21 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 		projectForDB = sql.NullString{Valid: false}
 	}
 
+	var expiresAtForDB sql.NullTime
+	if expiresAt != nil {
+		expiresAtForDB = sql.NullTime{Time: *expiresAt, Valid: true}
+	} else {
+		expiresAtForDB = sql.NullTime{Valid: false}
+	}
+
 	params := repository.StoreAPIKeyParams{
 		MemberEmail:   memberInfo.Email,
 		ApiKeyHash:    hashedTokenString,
 		Project:       projectForDB,
 		AllowedOrigin: allowedOriginForDB,
-		IsDev:         isDevForDB,
+		IsDev:         req.IsDev,
 		IsAdmin:       req.IsAdmin,
-		ExpiresAt:     sql.NullTime{Valid: false},
+		ExpiresAt:     expiresAtForDB,
 	}
 
 	err = q.StoreAPIKey(ctx, params)
@@ -146,6 +155,11 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 	response := map[string]interface{}{
 		"email":   memberInfo.Email,
 		"api_key": tokenString,
+	}
+
+	// include expiration time in response if applicable
+	if expiresAt != nil {
+		response["expires_at"] = expiresAt.Format("2006-01-02T15:04:05Z07:00")
 	}
 
 	return c.JSON(http.StatusOK, response)
