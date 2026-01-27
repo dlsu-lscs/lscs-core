@@ -39,5 +39,16 @@ main
 # Node.js
 node_modules/
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.next/
+out/
+dist/
+build/
+.turbo/
+.vercel/
+.cache/
+*.tsbuildinfo
 
 var

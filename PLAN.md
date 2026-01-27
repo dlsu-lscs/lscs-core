@@ -1,7 +1,7 @@
 # LSCS Core - Project Plan
 
 > **Project**: LSCS Core - Member Management & API Key Service  
-> **Status**: Phase 2 - Foundation Setup  
+> **Status**: Phase 3 - Authentication & Session Management  
 > **Last Updated**: 2026-01-27
 
 ## Overview
@@ -144,17 +144,18 @@ LSCS Core is evolving from an "API Key Management" service into a full-featured 
 
 ---
 
-## Phase 2: Foundation Setup
+## Phase 2: Foundation Setup ✅
 
 > **Goal**: Set up infrastructure for new features (migrations, logging, docs, config).
+> **Status**: COMPLETED (2026-01-27)
 
 ### 2.1 Database Migrations with Goose
 
-- [ ] Add `pressly/goose` dependency
-- [ ] Create `migrations/` directory
-- [ ] Generate initial migration from existing `schema.sql` (baseline)
-- [ ] Add migration commands to Makefile
-- [ ] Document migration workflow in AGENTS.md
+- [x] Add `pressly/goose` dependency
+- [x] Create `migrations/` directory
+- [x] Generate initial migration from existing `schema.sql` (baseline)
+- [x] Add migration commands to Makefile
+- [x] Document migration workflow in AGENTS.md
 
 **Important**: Do NOT drop existing tables. Initial migration should be marked as baseline (already applied).
 
@@ -255,39 +256,38 @@ migrations/
 
 ### 2.3 Structured Logging with Zerolog
 
-- [ ] Replace `log/slog` with `rs/zerolog`
-- [ ] Add request ID middleware
-- [ ] Configure log levels via env (`LOG_LEVEL`)
-- [ ] Add structured context to all log calls
+- [x] Replace `log/slog` with `rs/zerolog`
+- [x] Add request ID middleware
+- [x] Configure log levels via env (`LOG_LEVEL`)
+- [x] Add structured context to all log calls
 
-**Files**: `internal/middlewares/logging.go`, all files using `slog`
+**Files**: `internal/logging/logging.go`, `internal/middlewares/request_logger.go`, all files using `slog`
 
 ### 2.4 Configuration Management
 
-- [ ] Create `internal/config/config.go`
-- [ ] Centralize all env var access
-- [ ] Add validation for required config
-- [ ] Add config documentation
+- [x] Create `internal/config/config.go`
+- [x] Centralize all env var access
+- [x] Add validation for required config
+- [x] Add config documentation
 
 **Files**: `internal/config/config.go`, `.env.example`
 
 ### 2.5 API Documentation (Swagger)
 
-- [ ] Add `swaggo/swag` and `swaggo/echo-swagger` dependencies
-- [ ] Add Swagger annotations to all endpoints
-- [ ] Serve Swagger UI at `/docs`
-- [ ] Generate static OpenAPI spec file
-- [ ] Add `make swagger` command
+- [x] Add `swaggo/swag` and `swaggo/echo-swagger` dependencies
+- [x] Add Swagger annotations to all endpoints
+- [x] Serve Swagger UI at `/docs`
+- [x] Generate static OpenAPI spec file
+- [x] Add `make swagger` command
 
 **Files**: `cmd/api/main.go`, all handlers, `Makefile`, `docs/`
 
 ### 2.6 Monorepo Structure
 
-- [ ] Create `web/` directory for Next.js frontend
-- [ ] Update `.gitignore` for Node.js
-- [ ] Add root `package.json` if needed for workspace
+- [x] Create `web/` directory for Next.js frontend
+- [x] Update `.gitignore` for Node.js
 
-**Files**: `web/`, `.gitignore`, `package.json` (optional)
+**Files**: `web/`, `.gitignore`
 
 ---
 
@@ -640,12 +640,12 @@ Each log entry includes:
 - [x] No panics in production code paths
 - [x] Input validation on all endpoints
 
-### Phase 2 Complete When:
+### Phase 2 Complete When: ✅
 
-- [ ] Goose migrations working
-- [ ] Zerolog integrated
-- [ ] Swagger docs accessible at `/docs`
-- [ ] Static OpenAPI spec generated
+- [x] Goose migrations working
+- [x] Zerolog integrated
+- [x] Swagger docs accessible at `/docs`
+- [x] Static OpenAPI spec generated
 
 ### Phase 3 Complete When:
 
