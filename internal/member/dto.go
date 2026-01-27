@@ -5,18 +5,21 @@ import (
 	"github.com/dlsu-lscs/lscs-core-api/internal/repository"
 )
 
+// EmailRequest represents a request with an email parameter
 type EmailRequest struct {
-	Email string `json:"email" validate:"required,email"`
+	Email string `json:"email" validate:"required,email" example:"user@dlsu.edu.ph"`
 }
 
+// IdRequest represents a request with a member ID parameter
 type IdRequest struct {
-	Id int `json:"id" validate:"required,gt=0"`
+	Id int `json:"id" validate:"required,gt=0" example:"12345678"`
 }
 
+// FullInfoMemberResponse represents complete member information
 type FullInfoMemberResponse struct {
-	ID            int32                  `json:"id"`
-	Email         string                 `json:"email"`
-	FullName      string                 `json:"full_name"`
+	ID            int32                  `json:"id" example:"12345678"`
+	Email         string                 `json:"email" example:"user@dlsu.edu.ph"`
+	FullName      string                 `json:"full_name" example:"Juan Dela Cruz"`
 	Nickname      helpers.NullableString `json:"nickname"`
 	CommitteeID   helpers.NullableString `json:"committee_id"`
 	CommitteeName helpers.NullableString `json:"committee_name"`
@@ -57,11 +60,12 @@ func toFullInfoMemberResponse(m repository.GetMemberInfoRow) FullInfoMemberRespo
 	}
 }
 
+// MemberResponse represents basic member information
 type MemberResponse struct {
-	ID            int32                  `json:"id"`
-	FullName      string                 `json:"full_name"`
+	ID            int32                  `json:"id" example:"12345678"`
+	FullName      string                 `json:"full_name" example:"Juan Dela Cruz"`
 	Nickname      helpers.NullableString `json:"nickname"`
-	Email         string                 `json:"email"`
+	Email         string                 `json:"email" example:"user@dlsu.edu.ph"`
 	Telegram      helpers.NullableString `json:"telegram"`
 	PositionID    helpers.NullableString `json:"position_id"`
 	CommitteeID   helpers.NullableString `json:"committee_id"`

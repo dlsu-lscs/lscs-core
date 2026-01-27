@@ -17,11 +17,19 @@ import (
 	"github.com/dlsu-lscs/lscs-core-api/internal/repository"
 )
 
+// RequestKeyRequest represents the request body for requesting an API key
 type RequestKeyRequest struct {
-	Project       string `json:"project" validate:"omitempty,max=255"`
-	AllowedOrigin string `json:"allowed_origin" validate:"omitempty,url"`
-	IsDev         bool   `json:"is_dev"`
-	IsAdmin       bool   `json:"is_admin"`
+	Project       string `json:"project" validate:"omitempty,max=255" example:"My LSCS Project"`
+	AllowedOrigin string `json:"allowed_origin" validate:"omitempty,url" example:"https://example.com"`
+	IsDev         bool   `json:"is_dev" example:"false"`
+	IsAdmin       bool   `json:"is_admin" example:"false"`
+}
+
+// RequestKeyResponse represents the response for a successful API key request
+type RequestKeyResponse struct {
+	Email     string `json:"email" example:"user@dlsu.edu.ph"`
+	APIKey    string `json:"api_key" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	ExpiresAt string `json:"expires_at,omitempty" example:"2027-01-27T15:04:05Z"`
 }
 
 type Handler struct {
@@ -36,6 +44,21 @@ func NewHandler(authService Service, dbService database.Service) *Handler {
 	}
 }
 
+// RequestKeyHandler generates a new API key for authorized RND members
+// @Summary Request API Key
+// @Description Generate a new API key for external projects. Only RND members with AVP position or higher can request keys.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body RequestKeyRequest true "API Key Request"
+// @Success 200 {object} RequestKeyResponse "API key generated successfully"
+// @Failure 400 {object} helpers.ErrorResponse "Invalid request"
+// @Failure 401 {object} helpers.ErrorResponse "Unauthorized"
+// @Failure 404 {object} helpers.ErrorResponse "Member not found"
+// @Failure 409 {object} helpers.ErrorResponse "Origin already exists"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security GoogleAuth
+// @Router /request-key [post]
 func (h *Handler) RequestKeyHandler(c echo.Context) error {
 	dbconn := h.dbService.GetConnection()
 	q := repository.New(dbconn)

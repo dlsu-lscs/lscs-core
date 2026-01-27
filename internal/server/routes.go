@@ -9,6 +9,7 @@ import (
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
 func (s *Server) RegisterRoutes(e *echo.Echo) {
@@ -26,6 +27,9 @@ func (s *Server) RegisterRoutes(e *echo.Echo) {
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "it works")
 	})
+
+	// Swagger documentation
+	e.GET("/docs/*", echoSwagger.WrapHandler)
 
 	// Google OAuth protected routes
 	googleAuthProtected := e.Group("")

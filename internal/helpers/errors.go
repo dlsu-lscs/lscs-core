@@ -6,6 +6,13 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// ErrorResponse represents a standardized error response for Swagger documentation
+type ErrorResponse struct {
+	Error   string `json:"error" example:"Something went wrong"`
+	Code    string `json:"code,omitempty" example:"BAD_REQUEST"`
+	Details any    `json:"details,omitempty"`
+}
+
 // APIError represents a standardized error response.
 type APIError struct {
 	Error   string `json:"error"`

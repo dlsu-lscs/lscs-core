@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/dlsu-lscs/lscs-core-api/internal/repository"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
@@ -49,9 +48,14 @@ func TestGetAllCommitteesHandler(t *testing.T) {
 
 	if assert.NoError(t, h.GetAllCommitteesHandler(c)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var resp map[string][]repository.Committee
+		var resp GetAllCommitteesResponse
 		json.Unmarshal(rec.Body.Bytes(), &resp)
-		assert.Len(t, resp["committees"], 1)
-		assert.Equal(t, "RND", resp["committees"][0].CommitteeID)
+		assert.Len(t, resp.Committees, 1)
+		assert.Equal(t, "RND", resp.Committees[0].CommitteeID)
+		assert.Equal(t, "Research and Development", resp.Committees[0].CommitteeName)
+		assert.NotNil(t, resp.Committees[0].CommitteeHead)
+		assert.Equal(t, int32(1), *resp.Committees[0].CommitteeHead)
+		assert.NotNil(t, resp.Committees[0].DivisionID)
+		assert.Equal(t, "INT", *resp.Committees[0].DivisionID)
 	}
 }

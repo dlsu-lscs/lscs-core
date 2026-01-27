@@ -1,0 +1,643 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API for La Salle Computer Society member management and API key services",
+        "title": "LSCS Core API",
+        "termsOfService": "https://lscs.dlsu.edu.ph/terms",
+        "contact": {
+            "name": "LSCS R\u0026D Team",
+            "email": "rnd@lscs.dlsu.edu.ph"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/check-email": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Verify if an email address belongs to an LSCS member",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "members"
+                ],
+                "summary": "Check email membership",
+                "parameters": [
+                    {
+                        "description": "Email Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_member.EmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Member exists",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Member not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/check-id": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Verify if a student ID belongs to an LSCS member",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "members"
+                ],
+                "summary": "Check ID membership",
+                "parameters": [
+                    {
+                        "description": "ID Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_member.IdRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Member exists",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Member not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/committees": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves a list of all committees in the organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "committees"
+                ],
+                "summary": "Get all committees",
+                "responses": {
+                    "200": {
+                        "description": "List of committees",
+                        "schema": {
+                            "$ref": "#/definitions/internal_committee.GetAllCommitteesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/member": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get complete member information using their email address",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "members"
+                ],
+                "summary": "Get member info by email",
+                "parameters": [
+                    {
+                        "description": "Email Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_member.EmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Member information",
+                        "schema": {
+                            "$ref": "#/definitions/internal_member.FullInfoMemberResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Member not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/member-id": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get complete member information using their student ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "members"
+                ],
+                "summary": "Get member info by ID",
+                "parameters": [
+                    {
+                        "description": "ID Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_member.IdRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Member information",
+                        "schema": {
+                            "$ref": "#/definitions/internal_member.FullInfoMemberResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Member not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/members": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a list of all LSCS members with basic information",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "members"
+                ],
+                "summary": "List all members",
+                "responses": {
+                    "200": {
+                        "description": "List of members",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_member.MemberResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/request-key": {
+            "post": {
+                "security": [
+                    {
+                        "GoogleAuth": []
+                    }
+                ],
+                "description": "Generate a new API key for external projects. Only RND members with AVP position or higher can request keys.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Request API Key",
+                "parameters": [
+                    {
+                        "description": "API Key Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_auth.RequestKeyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "API key generated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/internal_auth.RequestKeyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Member not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Origin already exists",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "github_com_dlsu-lscs_lscs-core-api_internal_helpers.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "BAD_REQUEST"
+                },
+                "details": {},
+                "error": {
+                    "type": "string",
+                    "example": "Something went wrong"
+                }
+            }
+        },
+        "github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString": {
+            "type": "object",
+            "properties": {
+                "string": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if String is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_auth.RequestKeyRequest": {
+            "type": "object",
+            "properties": {
+                "allowed_origin": {
+                    "type": "string",
+                    "example": "https://example.com"
+                },
+                "is_admin": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "is_dev": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "project": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "My LSCS Project"
+                }
+            }
+        },
+        "internal_auth.RequestKeyResponse": {
+            "type": "object",
+            "properties": {
+                "api_key": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                },
+                "email": {
+                    "type": "string",
+                    "example": "user@dlsu.edu.ph"
+                },
+                "expires_at": {
+                    "type": "string",
+                    "example": "2027-01-27T15:04:05Z"
+                }
+            }
+        },
+        "internal_committee.CommitteeResponse": {
+            "type": "object",
+            "properties": {
+                "committee_head": {
+                    "type": "integer",
+                    "example": 123
+                },
+                "committee_id": {
+                    "type": "string",
+                    "example": "CREATIVES"
+                },
+                "committee_name": {
+                    "type": "string",
+                    "example": "Creatives Committee"
+                },
+                "division_id": {
+                    "type": "string",
+                    "example": "INTERNALS"
+                }
+            }
+        },
+        "internal_committee.GetAllCommitteesResponse": {
+            "type": "object",
+            "properties": {
+                "committees": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_committee.CommitteeResponse"
+                    }
+                }
+            }
+        },
+        "internal_member.EmailRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "user@dlsu.edu.ph"
+                }
+            }
+        },
+        "internal_member.FullInfoMemberResponse": {
+            "type": "object",
+            "properties": {
+                "college": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "committee_id": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "committee_name": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "contact_number": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "discord": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "division_id": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "division_name": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "user@dlsu.edu.ph"
+                },
+                "fb_link": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "full_name": {
+                    "type": "string",
+                    "example": "Juan Dela Cruz"
+                },
+                "house_name": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 12345678
+                },
+                "interests": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "nickname": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "position_id": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "position_name": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "program": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "telegram": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                }
+            }
+        },
+        "internal_member.IdRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "example": 12345678
+                }
+            }
+        },
+        "internal_member.MemberResponse": {
+            "type": "object",
+            "properties": {
+                "college": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "committee_id": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "contact_number": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "discord": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "user@dlsu.edu.ph"
+                },
+                "fb_link": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "full_name": {
+                    "type": "string",
+                    "example": "Juan Dela Cruz"
+                },
+                "house_name": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 12345678
+                },
+                "interests": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "nickname": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "position_id": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "program": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                },
+                "telegram": {
+                    "$ref": "#/definitions/github_com_dlsu-lscs_lscs-core-api_internal_helpers.NullableString"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "JWT Bearer token (format: Bearer \u003ctoken\u003e)",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        },
+        "GoogleAuth": {
+            "description": "Google OAuth ID token (format: Bearer \u003cgoogle_id_token\u003e)",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

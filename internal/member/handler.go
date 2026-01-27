@@ -12,6 +12,19 @@ import (
 	"github.com/dlsu-lscs/lscs-core-api/internal/repository"
 )
 
+// GetMemberInfo retrieves detailed member information by email
+// @Summary Get member info by email
+// @Description Get complete member information using their email address
+// @Tags members
+// @Accept json
+// @Produce json
+// @Param request body EmailRequest true "Email Request"
+// @Success 200 {object} FullInfoMemberResponse "Member information"
+// @Failure 400 {object} helpers.ErrorResponse "Invalid request"
+// @Failure 404 {object} helpers.ErrorResponse "Member not found"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security BearerAuth
+// @Router /member [post]
 func (h *Handler) GetMemberInfo(c echo.Context) error {
 	ctx := c.Request().Context()
 	dbconn := h.dbService.GetConnection()
@@ -42,6 +55,19 @@ func (h *Handler) GetMemberInfo(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
+// GetMemberInfoByID retrieves detailed member information by ID
+// @Summary Get member info by ID
+// @Description Get complete member information using their student ID
+// @Tags members
+// @Accept json
+// @Produce json
+// @Param request body IdRequest true "ID Request"
+// @Success 200 {object} FullInfoMemberResponse "Member information"
+// @Failure 400 {object} helpers.ErrorResponse "Invalid request"
+// @Failure 404 {object} helpers.ErrorResponse "Member not found"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security BearerAuth
+// @Router /member-id [post]
 func (h *Handler) GetMemberInfoByID(c echo.Context) error {
 	ctx := c.Request().Context()
 	dbconn := h.dbService.GetConnection()
@@ -73,6 +99,15 @@ func (h *Handler) GetMemberInfoByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
+// GetAllMembersHandler lists all members
+// @Summary List all members
+// @Description Get a list of all LSCS members with basic information
+// @Tags members
+// @Produce json
+// @Success 200 {array} MemberResponse "List of members"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security BearerAuth
+// @Router /members [get]
 func (h *Handler) GetAllMembersHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 	dbconn := h.dbService.GetConnection()
@@ -92,6 +127,19 @@ func (h *Handler) GetAllMembersHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
+// CheckEmailHandler checks if an email belongs to an LSCS member
+// @Summary Check email membership
+// @Description Verify if an email address belongs to an LSCS member
+// @Tags members
+// @Accept json
+// @Produce json
+// @Param request body EmailRequest true "Email Request"
+// @Success 200 {object} map[string]interface{} "Member exists"
+// @Failure 400 {object} helpers.ErrorResponse "Invalid request"
+// @Failure 404 {object} helpers.ErrorResponse "Member not found"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security BearerAuth
+// @Router /check-email [post]
 func (h *Handler) CheckEmailHandler(c echo.Context) error {
 	var req EmailRequest
 
@@ -124,6 +172,19 @@ func (h *Handler) CheckEmailHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
+// CheckIDIfMember checks if an ID belongs to an LSCS member
+// @Summary Check ID membership
+// @Description Verify if a student ID belongs to an LSCS member
+// @Tags members
+// @Accept json
+// @Produce json
+// @Param request body IdRequest true "ID Request"
+// @Success 200 {object} map[string]interface{} "Member exists"
+// @Failure 400 {object} helpers.ErrorResponse "Invalid request"
+// @Failure 404 {object} helpers.ErrorResponse "Member not found"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security BearerAuth
+// @Router /check-id [post]
 func (h *Handler) CheckIDIfMember(c echo.Context) error {
 	var req IdRequest
 

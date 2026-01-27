@@ -88,4 +88,9 @@ migrate-baseline:
 	@echo "Marking baseline migration as applied..."
 	@goose -dir $(GOOSE_MIGRATION_DIR) $(GOOSE_DRIVER) "$(GOOSE_DBSTRING)" up-to 1
 
-.PHONY: all build run test clean watch docker-run docker-down itest migrate-up migrate-down migrate-status migrate-create migrate-baseline
+# Swagger documentation (requires swag: go install github.com/swaggo/swag/cmd/swag@latest)
+swagger:
+	@echo "Generating Swagger documentation..."
+	@swag init -g cmd/api/main.go -o docs --parseDependency --parseInternal
+
+.PHONY: all build run test clean watch docker-run docker-down itest migrate-up migrate-down migrate-status migrate-create migrate-baseline swagger

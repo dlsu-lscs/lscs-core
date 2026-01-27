@@ -1,10 +1,12 @@
 package committee
 
 import (
-	"fmt"
 	"net/http"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/dlsu-lscs/lscs-core-api/internal/database"
+	"github.com/dlsu-lscs/lscs-core-api/internal/helpers"
 	"github.com/dlsu-lscs/lscs-core-api/internal/repository"
 	"github.com/labstack/echo/v4"
 )
@@ -19,6 +21,17 @@ func NewHandler(dbService database.Service) *Handler {
 	}
 }
 
+// GetAllCommitteesHandler godoc
+// @Summary Get all committees
+// @Description Retrieves a list of all committees in the organization
+// @Tags committees
+// @Accept json
+// @Produce json
+// @Success 200 {object} GetAllCommitteesResponse "List of committees"
+// @Failure 401 {object} helpers.ErrorResponse "Unauthorized"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security BearerAuth
+// @Router /committees [get]
 func (h *Handler) GetAllCommitteesHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 	dbconn := h.dbService.GetConnection()
@@ -26,13 +39,26 @@ func (h *Handler) GetAllCommitteesHandler(c echo.Context) error {
 
 	committees, err := q.GetAllCommittees(ctx)
 	if err != nil {
-		response := map[string]string{
-			"error": fmt.Sprintf("Internal server error: %v", err),
-		}
-		return c.JSON(http.StatusInternalServerError, response)
+		log.Error().Err(err).Msg("failed to get all committees")
+		return helpers.ErrInternal(c, "")
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"committees": committees,
+	// convert to response format
+	response := make([]CommitteeResponse, len(committees))
+	for i, comm := range committees {
+		response[i] = CommitteeResponse{
+			CommitteeID:   comm.CommitteeID,
+			CommitteeName: comm.CommitteeName,
+		}
+		if comm.CommitteeHead.Valid {
+			response[i].CommitteeHead = &comm.CommitteeHead.Int32
+		}
+		if comm.DivisionID.Valid {
+			response[i].DivisionID = &comm.DivisionID.String
+		}
+	}
+
+	return c.JSON(http.StatusOK, GetAllCommitteesResponse{
+		Committees: response,
 	})
 }

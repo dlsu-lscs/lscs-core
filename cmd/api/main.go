@@ -15,7 +15,33 @@ import (
 	"github.com/dlsu-lscs/lscs-core-api/internal/server"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/joho/godotenv/autoload"
+
+	_ "github.com/dlsu-lscs/lscs-core-api/docs" // swagger docs
 )
+
+// @title LSCS Core API
+// @version 1.0
+// @description API for La Salle Computer Society member management and API key services
+// @termsOfService https://lscs.dlsu.edu.ph/terms
+
+// @contact.name LSCS R&D Team
+// @contact.email rnd@lscs.dlsu.edu.ph
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description JWT Bearer token (format: Bearer <token>)
+
+// @securityDefinitions.apikey GoogleAuth
+// @in header
+// @name Authorization
+// @description Google OAuth ID token (format: Bearer <google_id_token>)
 
 func gracefulShutdown(apiServer *http.Server, done chan bool) {
 	// Create context that listens for the interrupt signal from the OS.
