@@ -83,10 +83,12 @@ migrate-create:
 	@read -p "Enter migration name: " name; \
 	goose -dir $(GOOSE_MIGRATION_DIR) create $$name sql
 
-# mark baseline migration as applied without running it (for existing databases)
+# NOTE: goose doesn't have a builtin "mark migrations as applied" without overwriting the database (for existing dbs with data)
+# so we just workaround by manually adding the table for goose
 migrate-baseline:
 	@echo "Marking baseline migration as applied..."
-	@goose -dir $(GOOSE_MIGRATION_DIR) $(GOOSE_DRIVER) "$(GOOSE_DBSTRING)" up-to 1
+	@goose -dir $(GOOSE_MIGRATION_DIR) $(GOOSE_DRIVER) "$(GOOSE_DBSTRING)" version
+	@echo "INSERT INTO goose_db_version (version_id, is_applied, tstamp) VALUES (1, true, NOW()) ON DUPLICATE KEY UPDATE is_applied=true;" | mysql -h $(DB_HOST) -P $(DB_PORT) -u $(DB_USERNAME) -p$(DB_PASSWORD) $(DB_DATABASE)
 
 # Swagger documentation (requires swag: go install github.com/swaggo/swag/cmd/swag@latest)
 swagger:
