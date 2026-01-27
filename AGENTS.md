@@ -29,6 +29,13 @@ go test -v -run TestGetMemberInfo/success ./internal/member  # Specific subtest
 
 # Code generation
 sqlc generate           # Regenerate repository code from query.sql
+
+# Database migrations (requires goose CLI)
+make migrate-up         # Run all pending migrations
+make migrate-down       # Rollback last migration
+make migrate-status     # Show migration status
+make migrate-create     # Create new migration file
+make migrate-baseline   # Mark baseline as applied (for existing DBs)
 ```
 
 ## Project Structure
@@ -160,3 +167,59 @@ func (m *mockDBService) GetConnection() *sql.DB { return m.db }
 3. **Environment variables** are loaded via `github.com/joho/godotenv/autoload`
 4. **Required env vars**: `DB_DATABASE`, `DB_PASSWORD`, `DB_USERNAME`, `DB_PORT`, `DB_HOST`, `JWT_SECRET`
 5. **Comments**: Start with lowercase, explain "why" not "what"
+
+## Database Migrations
+
+This project uses [Goose](https://github.com/pressly/goose) for database migrations.
+
+### Setup
+
+Install the goose CLI:
+
+```bash
+go install github.com/pressly/goose/v3/cmd/goose@latest
+```
+
+### Migration Workflow
+
+**For existing databases** (already has schema):
+
+```bash
+# mark the baseline migration as applied without running it
+make migrate-baseline
+```
+
+**For new databases**:
+
+```bash
+# run all pending migrations
+make migrate-up
+```
+
+### Creating New Migrations
+
+```bash
+make migrate-create
+# enter migration name when prompted (e.g., "add_sessions_table")
+```
+
+This creates a new SQL file in `migrations/` with `-- +goose Up` and `-- +goose Down` sections.
+
+### Migration Commands
+
+| Command | Description |
+|---------|-------------|
+| `make migrate-up` | Run all pending migrations |
+| `make migrate-down` | Rollback the last migration |
+| `make migrate-status` | Show current migration status |
+| `make migrate-create` | Create a new migration file |
+| `make migrate-baseline` | Mark baseline as applied (for existing DBs) |
+
+### Migration Best Practices
+
+1. **Never modify applied migrations** - create a new migration instead
+2. **Always include a Down migration** - enables rollback
+3. **Test migrations locally** before committing
+4. **Use descriptive names** (e.g., `add_sessions_table`, `add_member_image_url`)
+5. **Keep migrations small** - one logical change per migration
+
