@@ -1,12 +1,13 @@
 package middlewares
 
 import (
-	"log/slog"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 
 	"github.com/dlsu-lscs/lscs-core-api/internal/database"
 	"github.com/dlsu-lscs/lscs-core-api/internal/helpers"
-	"github.com/labstack/echo/v4"
 )
 
 // AuthorizationMiddleware enforces that the user identified by "user_email" context key
@@ -16,7 +17,7 @@ func AuthorizationMiddleware(dbService database.Service) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			email, ok := c.Get("user_email").(string)
 			if !ok || email == "" {
-				slog.Error("AuthorizationMiddleware: user_email not found in context")
+				log.Error().Msg("AuthorizationMiddleware: user_email not found in context")
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 			}
 

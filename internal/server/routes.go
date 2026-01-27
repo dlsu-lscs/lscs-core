@@ -2,8 +2,6 @@ package server
 
 import (
 	"net/http"
-	"os"
-	"strings"
 
 	"github.com/dlsu-lscs/lscs-core-api/internal/auth"
 	"github.com/dlsu-lscs/lscs-core-api/internal/middlewares"
@@ -13,27 +11,13 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-// getAllowedOrigins returns the list of allowed CORS origins from environment.
-// defaults to restrictive localhost-only in development if not set.
-func getAllowedOrigins() []string {
-	originsEnv := os.Getenv("ALLOWED_ORIGINS")
-	if originsEnv == "" {
-		// default to restrictive origins if not configured
-		return []string{"http://localhost:3000"}
-	}
-	origins := strings.Split(originsEnv, ",")
-	// trim whitespace from each origin
-	for i, origin := range origins {
-		origins[i] = strings.TrimSpace(origin)
-	}
-	return origins
-}
-
 func (s *Server) RegisterRoutes(e *echo.Echo) {
-	e.Use(middleware.Logger())
+	// request ID and logging middlewares
+	e.Use(middlewares.RequestIDMiddleware())
+	e.Use(middlewares.RequestLoggerMiddleware())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: getAllowedOrigins(),
+		AllowOrigins: s.cfg.AllowedOrigins,
 		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentLength, echo.HeaderAcceptEncoding, echo.HeaderContentType, echo.HeaderAuthorization},
 	}))
@@ -45,14 +29,14 @@ func (s *Server) RegisterRoutes(e *echo.Echo) {
 
 	// Google OAuth protected routes
 	googleAuthProtected := e.Group("")
-	googleAuthProtected.Use(middlewares.GoogleAuthMiddleware)
+	googleAuthProtected.Use(middlewares.GoogleAuthMiddleware(s.cfg))
 	googleAuthProtected.POST("/request-key", s.authHandler.RequestKeyHandler)
 
 	// --- Protected routes ----
 	protected := e.Group("")
 	protected.Use(echojwt.WithConfig(echojwt.Config{
 		NewClaimsFunc: func(c echo.Context) jwt.Claims { return new(auth.JwtCustomClaims) },
-		SigningKey:    []byte(os.Getenv("JWT_SECRET")),
+		SigningKey:    []byte(s.cfg.JWTSecret),
 		TokenLookup:   "header:Authorization:Bearer ",
 		SigningMethod: "HS256",
 	}))

@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
-	"os"
 	"strconv"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/rs/zerolog/log"
+
+	"github.com/dlsu-lscs/lscs-core-api/internal/config"
 )
 
 // Service represents a service that interacts with a database.
@@ -27,30 +28,24 @@ type Service interface {
 }
 
 type service struct {
-	db *sql.DB
+	db     *sql.DB
+	dbname string
 }
 
-var (
-	dbname     = os.Getenv("DB_DATABASE")
-	password   = os.Getenv("DB_PASSWORD")
-	username   = os.Getenv("DB_USERNAME")
-	port       = os.Getenv("DB_PORT")
-	host       = os.Getenv("DB_HOST")
-	dbInstance *service
-)
+var dbInstance *service
 
-func New() Service {
+func New(cfg *config.Config) Service {
 	// Reuse Connection
 	if dbInstance != nil {
 		return dbInstance
 	}
 
 	// Opening a driver typically will not attempt to connect to the database.
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", username, password, host, port, dbname))
+	db, err := sql.Open("mysql", cfg.DSN())
 	if err != nil {
 		// This will not be a connection error, but a DSN parse error or
 		// another initialization error.
-		slog.Error("failed to open database connection", "error", err)
+		log.Error().Err(err).Msg("failed to open database connection")
 		return nil
 	}
 	db.SetConnMaxLifetime(0)
@@ -58,7 +53,8 @@ func New() Service {
 	db.SetMaxOpenConns(50)
 
 	dbInstance = &service{
-		db: db,
+		db:     db,
+		dbname: cfg.DBDatabase,
 	}
 	return dbInstance
 }
@@ -76,7 +72,7 @@ func (s *service) Health() map[string]string {
 	if err != nil {
 		stats["status"] = "down"
 		stats["error"] = fmt.Sprintf("db down: %v", err)
-		slog.Error("database health check failed", "error", err)
+		log.Error().Err(err).Msg("database health check failed")
 		return stats
 	}
 
@@ -118,7 +114,7 @@ func (s *service) Health() map[string]string {
 // If the connection is successfully closed, it returns nil.
 // If an error occurs while closing the connection, it returns the error.
 func (s *service) Close() error {
-	slog.Info("disconnected from database", "database", dbname)
+	log.Info().Str("database", s.dbname).Msg("disconnected from database")
 	return s.db.Close()
 }
 

@@ -5,15 +5,16 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
+
 	"github.com/dlsu-lscs/lscs-core-api/internal/database"
 	"github.com/dlsu-lscs/lscs-core-api/internal/helpers"
 	"github.com/dlsu-lscs/lscs-core-api/internal/repository"
-	"github.com/labstack/echo/v4"
 )
 
 type RequestKeyRequest struct {
@@ -43,7 +44,7 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 	// NOTE: this is set via google middleware
 	emailRequestor, ok := c.Get("user_email").(string)
 	if !ok || emailRequestor == "" {
-		slog.Error("user_email not found in context")
+		log.Error().Msg("user_email not found in context")
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 	}
 
@@ -51,7 +52,7 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 	if !isAuthorized {
 		// forbidden
 		// only expose the reason why its unauthorized to the server logs (not on client)
-		slog.Error(fmt.Sprintf("User %s has unauthorized position or committee", emailRequestor))
+		log.Error().Str("email", emailRequestor).Msg("user has unauthorized position or committee")
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User has unauthorized position or committee"})
 	}
 
@@ -70,7 +71,7 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 			}
 			return c.JSON(http.StatusNotFound, response)
 		}
-		slog.Error("error checking email", "error", err)
+		log.Error().Err(err).Msg("error checking email")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
@@ -103,7 +104,7 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 
 		exists, err := q.CheckAllowedOriginExists(ctx, sql.NullString{String: req.AllowedOrigin, Valid: true})
 		if err != nil {
-			slog.Error("failed to check allowed origin", "error", err)
+			log.Error().Err(err).Msg("failed to check allowed origin")
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error checking origin"})
 		}
 		if exists {
@@ -115,7 +116,7 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 
 	tokenString, expiresAt, err := h.authService.GenerateJWT(memberInfo.Email, keyType)
 	if err != nil {
-		slog.Error("failed to generate token", "error", err)
+		log.Error().Err(err).Msg("failed to generate token")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating token"})
 	}
 
@@ -148,7 +149,7 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 
 	err = q.StoreAPIKey(ctx, params)
 	if err != nil {
-		slog.Error("failed to store api key", "error", err)
+		log.Error().Err(err).Msg("failed to store api key")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error storing API key"})
 	}
 

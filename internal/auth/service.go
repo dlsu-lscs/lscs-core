@@ -2,11 +2,11 @@ package auth
 
 import (
 	"fmt"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/dlsu-lscs/lscs-core-api/internal/config"
 )
 
 // KeyType represents the type of API key being generated
@@ -43,19 +43,17 @@ type service struct {
 }
 
 // NewService creates a new auth service.
-func NewService(secret string) Service {
+func NewService(secret string, cfg *config.Config) Service {
 	devExpiry := defaultDevExpiryDays
 	prodExpiry := defaultProdExpiryDays
 
-	// allow overriding expiration via environment variables
-	if envDevExpiry := os.Getenv("JWT_DEV_EXPIRY_DAYS"); envDevExpiry != "" {
-		if days, err := strconv.Atoi(envDevExpiry); err == nil && days > 0 {
-			devExpiry = days
+	// use config values if available
+	if cfg != nil {
+		if cfg.JWTDevExpiryDays > 0 {
+			devExpiry = cfg.JWTDevExpiryDays
 		}
-	}
-	if envProdExpiry := os.Getenv("JWT_PROD_EXPIRY_DAYS"); envProdExpiry != "" {
-		if days, err := strconv.Atoi(envProdExpiry); err == nil && days > 0 {
-			prodExpiry = days
+		if cfg.JWTProdExpiryDays > 0 {
+			prodExpiry = cfg.JWTProdExpiryDays
 		}
 	}
 

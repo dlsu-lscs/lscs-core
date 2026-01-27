@@ -2,13 +2,14 @@ package member
 
 import (
 	"database/sql"
-	"log/slog"
 	"net/http"
 	"strconv"
 
+	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
+
 	"github.com/dlsu-lscs/lscs-core-api/internal/helpers"
 	"github.com/dlsu-lscs/lscs-core-api/internal/repository"
-	"github.com/labstack/echo/v4"
 )
 
 func (h *Handler) GetMemberInfo(c echo.Context) error {
@@ -32,7 +33,7 @@ func (h *Handler) GetMemberInfo(c echo.Context) error {
 			}
 			return c.JSON(http.StatusNotFound, response)
 		}
-		slog.Error("error checking email", "error", err)
+		log.Error().Err(err).Msg("error checking email")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
@@ -55,7 +56,7 @@ func (h *Handler) GetMemberInfoByID(c echo.Context) error {
 	memberInfo, err := q.GetMemberInfoById(ctx, int32(req.Id))
 	if err != nil {
 		if err == sql.ErrNoRows {
-			slog.Error("id is not an LSCS member", "err", err)
+			log.Error().Err(err).Int("id", req.Id).Msg("id is not an LSCS member")
 			response := map[string]string{
 				"error": "Not an LSCS member",
 				"state": "absent",
@@ -63,7 +64,7 @@ func (h *Handler) GetMemberInfoByID(c echo.Context) error {
 			}
 			return c.JSON(http.StatusNotFound, response)
 		}
-		slog.Error("error checking id", "error", err)
+		log.Error().Err(err).Msg("error checking id")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
@@ -79,7 +80,7 @@ func (h *Handler) GetAllMembersHandler(c echo.Context) error {
 
 	members, err := queries.ListMembers(ctx)
 	if err != nil {
-		slog.Error("Failed to list members", "err", err)
+		log.Error().Err(err).Msg("failed to list members")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to list members"})
 	}
 
@@ -111,7 +112,7 @@ func (h *Handler) CheckEmailHandler(c echo.Context) error {
 			}
 			return c.JSON(http.StatusNotFound, response)
 		}
-		slog.Error("Error checking email", "error", err)
+		log.Error().Err(err).Msg("error checking email")
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 	}
 
@@ -142,7 +143,7 @@ func (h *Handler) CheckIDIfMember(c echo.Context) error {
 			}
 			return c.JSON(http.StatusNotFound, response)
 		}
-		slog.Error("invalid ID", "error", err)
+		log.Error().Err(err).Msg("invalid ID")
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "invalid ID"})
 	}
 

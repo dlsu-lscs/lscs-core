@@ -6,10 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dlsu-lscs/lscs-core-api/internal/config"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/mysql"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
+
+var testCfg *config.Config
 
 func mustStartMySQLContainer() (func(context.Context, ...testcontainers.TerminateOption) error, error) {
 	var (
@@ -29,10 +32,6 @@ func mustStartMySQLContainer() (func(context.Context, ...testcontainers.Terminat
 		return nil, err
 	}
 
-	dbname = dbName
-	password = dbPwd
-	username = dbUser
-
 	dbHost, err := dbContainer.Host(context.Background())
 	if err != nil {
 		return dbContainer.Terminate, err
@@ -43,8 +42,17 @@ func mustStartMySQLContainer() (func(context.Context, ...testcontainers.Terminat
 		return dbContainer.Terminate, err
 	}
 
-	host = dbHost
-	port = dbPort.Port()
+	// create test config
+	testCfg = &config.Config{
+		DBDatabase: dbName,
+		DBPassword: dbPwd,
+		DBUsername: dbUser,
+		DBHost:     dbHost,
+		DBPort:     dbPort.Port(),
+		JWTSecret:  "test-secret",
+		GoEnv:      "test",
+		LogLevel:   "info",
+	}
 
 	return dbContainer.Terminate, err
 }
@@ -63,14 +71,18 @@ func TestMain(m *testing.M) {
 }
 
 func TestNew(t *testing.T) {
-	srv := New()
+	// reset singleton for test
+	dbInstance = nil
+	srv := New(testCfg)
 	if srv == nil {
 		t.Fatal("New() returned nil")
 	}
 }
 
 func TestHealth(t *testing.T) {
-	srv := New()
+	// reset singleton for test
+	dbInstance = nil
+	srv := New(testCfg)
 
 	stats := srv.Health()
 
@@ -88,7 +100,9 @@ func TestHealth(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	srv := New()
+	// reset singleton for test
+	dbInstance = nil
+	srv := New(testCfg)
 
 	if srv.Close() != nil {
 		t.Fatalf("expected Close() to return nil")

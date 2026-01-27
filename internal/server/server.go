@@ -3,12 +3,11 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/dlsu-lscs/lscs-core-api/internal/auth"
 	"github.com/dlsu-lscs/lscs-core-api/internal/committee"
+	"github.com/dlsu-lscs/lscs-core-api/internal/config"
 	"github.com/dlsu-lscs/lscs-core-api/internal/database"
 	"github.com/dlsu-lscs/lscs-core-api/internal/member"
 	"github.com/labstack/echo/v4"
@@ -16,6 +15,7 @@ import (
 
 type Server struct {
 	port int
+	cfg  *config.Config
 
 	db database.Service
 
@@ -24,20 +24,22 @@ type Server struct {
 	committeeHandler *committee.Handler
 }
 
-func NewServer() *http.Server {
-	port, _ := strconv.Atoi(os.Getenv("PORT"))
-	dbService := database.New()
+func NewServer(cfg *config.Config) *http.Server {
+	dbService := database.New(cfg)
 
 	NewServer := &Server{
-		port:             port,
+		port:             cfg.Port,
+		cfg:              cfg,
 		db:               dbService,
-		authHandler:      auth.NewHandler(auth.NewService(os.Getenv("JWT_SECRET")), dbService),
+		authHandler:      auth.NewHandler(auth.NewService(cfg.JWTSecret, cfg), dbService),
 		memberHandler:    member.NewHandler(dbService),
 		committeeHandler: committee.NewHandler(dbService),
 	}
 
 	// Declare Server config
 	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = true
 	NewServer.RegisterRoutes(e)
 
 	server := &http.Server{

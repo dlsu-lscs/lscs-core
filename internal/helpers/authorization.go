@@ -3,8 +3,8 @@ package helpers
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"log/slog"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/dlsu-lscs/lscs-core-api/internal/database"
 	"github.com/dlsu-lscs/lscs-core-api/internal/repository"
@@ -28,18 +28,18 @@ func AuthorizeIfRNDAndAVP(ctx context.Context, dbService database.Service, email
 	authenticatedRequesterInfo, err := q.GetMemberInfo(ctx, email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			slog.Error(fmt.Sprintf("not an LSCS member: %s", email), "error", err)
+			log.Error().Str("email", email).Err(err).Msg("not an LSCS member")
 			return false
 		}
-		slog.Error(fmt.Sprintf("error checking email: %s", email), "error", err)
+		log.Error().Str("email", email).Err(err).Msg("error checking email")
 		return false
 	}
 
 	// only allow RND members and those that are AVPs and above
 	if authenticatedRequesterInfo.CommitteeID.String != "RND" {
-		slog.Error(fmt.Sprintf("Email: %s is not a member of Research and Development.", email))
+		log.Error().Str("email", email).Msg("not a member of Research and Development")
 		if !allowedPositions[authenticatedRequesterInfo.PositionID.String] {
-			slog.Error(fmt.Sprintf("Email: %s is not AVP or higher.", email))
+			log.Error().Str("email", email).Msg("not AVP or higher")
 			return false
 		}
 		return false
