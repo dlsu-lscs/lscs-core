@@ -223,3 +223,19 @@ This creates a new SQL file in `migrations/` with `-- +goose Up` and `-- +goose 
 4. **Use descriptive names** (e.g., `add_sessions_table`, `add_member_image_url`)
 5. **Keep migrations small** - one logical change per migration
 
+## Change Logs
+
+Major changes are logged in `logs/` directory. Use this naming format:
+
+```
+logs/<timestamp>-phase<X>-<descriptive-title>.md
+```
+
+- **Timestamp format**: `YYYYMMDD-HHMM`
+- **Phase**: Current phase number from PLAN.md
+- **Title**: kebab-case summary of what changed
+
+Examples:
+- `logs/20260127-2200-phase1-fix-security-add-validation.md`
+- `logs/20260127-2330-phase2-add-swagger-docs-monorepo-structure.md`
+
