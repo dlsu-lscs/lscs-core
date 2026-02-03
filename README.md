@@ -271,6 +271,58 @@ curl -X POST https://core.api.dlsu-lscs.org/check-id \
 
 ## Contributing
 
+### Deployment
+
+This project uses a monorepo structure with separate CI/CD pipelines for the API and Web services.
+
+#### Architecture
+
+- **API Service**: Go/Echo backend running on port 8080
+- **Web Service**: Next.js frontend running on port 3000
+- **Deployment Platform**: Dokploy (self-hosted VPS)
+
+#### CI/CD Pipeline
+
+The GitHub Actions workflows handle testing, building, and deployment:
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `001-test.yml` | Push to Go or Web files | Run tests and linting |
+| `002-build-push-api.yml` | Changes to `**/*.go`, `go.mod`, `go.sum`, `Dockerfile.api` | Build & push API Docker image |
+| `003-build-push-web.yml` | Changes to `web/**`, `web/Dockerfile` | Build & push Web Docker image |
+| `004-deploy-api.yml` | After `002-build-push-api.yml` completes | Trigger API deployment in Dokploy |
+| `005-deploy-web.yml` | After `003-build-push-web.yml` completes | Trigger Web deployment in Dokploy |
+
+#### Docker Images
+
+- **API Image**: `ghcr.io/<org>/lscs-core-api-api:<tag>`
+- **Web Image**: `ghcr.io/<org>/lscs-core-api-web:<tag>`
+
+#### Dokploy Setup
+
+1. Create two applications in Dokploy:
+   - **API**: Points to `Dockerfile.api`, port 8080
+   - **Web**: Points to `web/Dockerfile`, port 3000
+
+2. Configure environment variables in Dokploy for each application
+
+3. Obtain webhook URLs and tokens from Dokploy, then add to GitHub secrets:
+   - `DOKPLOY_API_WEBHOOK_URL`
+   - `DOKPLOY_API_TOKEN`
+   - `DOKPLOY_WEB_WEBHOOK_URL`
+   - `DOKPLOY_WEB_TOKEN`
+
+#### Selective Deployment
+
+Changes are automatically isolated:
+- Go code changes → Only rebuilds and deploys API
+- Web code changes → Only rebuilds and deploys Web
+- Configuration changes → Rebuilds and deploys both
+
+#### Security Scanning
+
+Both Docker images are scanned using Trivy for vulnerabilities. Critical and High severity issues are reported in the GitHub Security tab.
+
 ### (for Maintainers & Admins) Creating a Release
 
 To create a new release, you need to push a new tag to the repository. The tag must follow the semantic versioning format (e.g., `v1.2.3`).

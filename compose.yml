@@ -1,0 +1,71 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lscs-core-api
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_DATABASE=dblscs40
+      - DB_HOST=167.253.157.145
+      - DB_PASSWORD=ZLOeq4LtZGZmQn9B2bbyjTC7kILTxTuJWeMwCpBZXk6s6YpkfQ7FV4Ybge6OeEDS
+      - DB_PASSWORD_OTHER=ZLOeq4LtZGZmQn9B2bbyjTC7kILTxTuJWeMwCpBZXk6s6YpkfQ7FV4Ybge6OeEDS
+      - DB_PORT=33067
+      - DB_ROOT_PASSWORD=JjAqv2SRNcOIiK2PqQeppeW2ms953slpCJXvJZmqLi2lF5EYHbD3yopdKv9paikS
+      - DB_USERNAME=mysql
+      - GO_ENV=production
+      - PORT=8080
+      - JWT_SECRET=ZvucLQkjoSJ46rntM/DPcfr3horFKbnJInLbCOTuFvA=
+      - GOOGLE_CLIENT_ID=
+      - GOOGLE_CLIENT_SECRET=
+      - OAUTH_REDIRECT_URL=http://localhost:8080/auth/google/callback
+      - ALLOWED_ORIGINS=http://localhost:3000,https://core.app.dlsu-lscs.org
+      - JWT_DEV_EXPIRY_DAYS=30
+      - JWT_PROD_EXPIRY_DAYS=365
+      - LOG_LEVEL=info
+    networks:
+      - lscs-network
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: lscs-core-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://api:8080
+    depends_on:
+      - api
+    networks:
+      - lscs-network
+    restart: unless-stopped
+
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: lscs-core-mysql
+  #   ports:
+  #     - "3306:3306"
+  #   environment:
+  #     - MYSQL_ROOT_PASSWORD=password
+  #     - MYSQL_DATABASE=lscs_core
+  #   volumes:
+  #     - mysql-data:/var/lib/mysql
+  #   networks:
+  #     - lscs-network
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   restart: unless-stopped
+
+networks:
+  lscs-network:
+    driver: bridge
+
+# volumes:
+#   mysql-data:

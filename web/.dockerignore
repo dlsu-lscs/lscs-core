@@ -4,9 +4,6 @@
 
 # Documentation
 *.md
-*.bk
-docker-compose*.yml
-LICENSE
 README.md
 
 # IDE
@@ -19,20 +16,13 @@ README.md
 .DS_Store
 Thumbs.db
 
-# Build artifacts
-bin
-obj
-*.exe
-*.dll
+# Dependencies
+node_modules
+.pnpm-store
 
-# Test
-coverage
-.nyc_output
-
-# Docker
-docker-compose*.yml
-Dockerfile*
-.dockerignore
+# Build
+.next
+out
 
 # Env
 .env
@@ -43,5 +33,9 @@ Dockerfile*
 *.log
 logs/
 
+# Docker
+Dockerfile*
+.dockerignore
+
 # Misc
-*.sql
+.eslintcache

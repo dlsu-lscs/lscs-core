@@ -1,8 +1,8 @@
 # LSCS Core - Project Plan
 
 > **Project**: LSCS Core - Member Management & API Key Service  
-> **Status**: Phase 3 - Authentication & Session Management  
-> **Last Updated**: 2026-01-27
+> **Status**: Phase 7 - Next.js Frontend Setup (COMPLETED)  
+> **Last Updated**: 2026-02-02
 
 ## Overview
 
@@ -74,16 +74,21 @@ LSCS Core is evolving from an "API Key Management" service into a full-featured 
 
 ### Existing Endpoints
 
-| Method | Path           | Auth         | Description                 |
-| ------ | -------------- | ------------ | --------------------------- |
-| GET    | `/`            | None         | Health check                |
-| POST   | `/request-key` | Google OAuth | Generate API key (RND AVP+) |
-| GET    | `/members`     | JWT          | List all members            |
-| GET    | `/committees`  | JWT          | List all committees         |
-| POST   | `/member`      | JWT          | Get member by email         |
-| POST   | `/member-id`   | JWT          | Get member by ID            |
-| POST   | `/check-email` | JWT          | Check if email is member    |
-| POST   | `/check-id`    | JWT          | Check if ID is member       |
+| Method | Path                    | Auth         | Description                   |
+| ------ | ----------------------- | ------------ | ----------------------------- |
+| GET    | `/`                     | None         | Health check                  |
+| GET    | `/docs/*`               | None         | Swagger documentation         |
+| GET    | `/auth/google/login`    | None         | Initiate Google OAuth         |
+| GET    | `/auth/google/callback` | None         | Handle OAuth callback         |
+| POST   | `/auth/logout`          | None         | Logout (clears session)       |
+| GET    | `/auth/me`              | Session      | Get current user profile      |
+| POST   | `/request-key`          | Google OAuth | Generate API key (RND AVP+)   |
+| GET    | `/members`              | JWT          | List all members              |
+| GET    | `/committees`           | JWT          | List all committees           |
+| POST   | `/member`               | JWT          | Get member by email           |
+| POST   | `/member-id`            | JWT          | Get member by ID              |
+| POST   | `/check-email`          | JWT          | Check if email is member      |
+| POST   | `/check-id`             | JWT          | Check if ID is member         |
 
 ---
 
@@ -295,9 +300,10 @@ migrations/
 
 ---
 
-## Phase 3: Authentication & Session Management
+## Phase 3: Authentication & Session Management ✅
 
 > **Goal**: Implement proper auth for web UI while maintaining API key system.
+> **Status**: COMPLETED (2026-02-01)
 
 ### Authentication Architecture
 
@@ -314,12 +320,12 @@ The system uses **two separate auth mechanisms**:
 
 ### 3.1 Session Management
 
-- [ ] Create `sessions` table migration (see Phase 2.2 for schema)
-- [ ] Create session service (`internal/auth/session.go`)
-- [ ] Implement session creation, validation, deletion
-- [ ] Implement sliding expiration (extend session if < 50% time remaining)
-- [ ] Add session cleanup job (delete expired sessions)
-- [ ] Support multiple active sessions per user (different devices)
+- [x] Create `sessions` table migration (see Phase 2.2 for schema)
+- [x] Create session service (`internal/auth/session.go`)
+- [x] Implement session creation, validation, deletion
+- [x] Implement sliding expiration (extend session if < 50% time remaining)
+- [x] Add session cleanup job (delete expired sessions)
+- [x] Support multiple active sessions per user (different devices)
 
 **Session Configuration**:
 
@@ -338,16 +344,16 @@ The system uses **two separate auth mechanisms**:
 // This prevents constant DB writes while keeping active users logged in
 ```
 
-**Files**: `migrations/00002_add_sessions_table.sql`, `internal/auth/session.go`
+**Files**: `migrations/20260128150157_add_sessions_table.sql`, `internal/auth/session.go`
 
 ### 3.2 Google OAuth for Web UI
 
-- [ ] Add `/auth/google/login` - redirect to Google (accepts `?remember=true`)
-- [ ] Add `/auth/google/callback` - handle OAuth callback
-- [ ] Create session on successful login (24h or 30d based on remember flag)
-- [ ] Set secure httpOnly cookie with appropriate Max-Age
-- [ ] Add `/auth/logout` endpoint (delete session, clear cookie)
-- [ ] Add `/auth/me` endpoint (get current user from session)
+- [x] Add `/auth/google/login` - redirect to Google (accepts `?remember=true`)
+- [x] Add `/auth/google/callback` - handle OAuth callback
+- [x] Create session on successful login (24h or 30d based on remember flag)
+- [x] Set secure httpOnly cookie with appropriate Max-Age
+- [x] Add `/auth/logout` endpoint (delete session, clear cookie)
+- [x] Add `/auth/me` endpoint (get current user from session)
 
 **Cookie Settings**:
 
@@ -369,34 +375,35 @@ cookie := &http.Cookie{
 
 ### 3.3 Session Middleware
 
-- [ ] Create session validation middleware
-- [ ] Extract session ID from cookie
-- [ ] Validate session exists and not expired
-- [ ] Apply sliding expiration logic
-- [ ] Set `user_id` and `user_email` in request context
-- [ ] Support both cookie (web UI) and Bearer token (API keys) on same endpoints
+- [x] Create session validation middleware
+- [x] Extract session ID from cookie
+- [x] Validate session exists and not expired
+- [x] Apply sliding expiration logic
+- [x] Set `user_id` and `user_email` in request context
+- [x] Support both cookie (web UI) and Bearer token (API keys) on same endpoints
 
 **Files**: `internal/middlewares/session.go`
 
 ---
 
-## Phase 4: RBAC & Permissions
+## Phase 4: RBAC & Permissions ✅
 
 > **Goal**: Implement role-based access control for member management.
+> **Status**: COMPLETED (2026-02-01)
 
 ### 4.1 Roles System
 
-- [ ] Create `roles` and `member_roles` tables migration (see Phase 2.2 for schema)
-- [ ] Seed initial roles (ADMIN, MODERATOR)
+- [x] Create `roles` and `member_roles` tables migration (see Phase 2.2 for schema)
+- [x] Seed initial roles (ADMIN, MODERATOR)
 
-**Files**: `migrations/00003_add_roles_tables.sql`, `internal/auth/rbac.go`
+**Files**: `migrations/20260201204133_add_roles_tables.sql`, `internal/auth/rbac.go`
 
 ### 4.2 Permission Helpers
 
-- [ ] Create permission checking functions
-- [ ] Implement position hierarchy: `PRES > EVP > VP > AVP > CT > JO > MEM`
-- [ ] Implement committee-based permissions (VP can edit their committee)
-- [ ] Admin role overrides all checks
+- [x] Create permission checking functions
+- [x] Implement position hierarchy: `PRES > EVP > VP > AVP > CT > JO > MEM`
+- [x] Implement committee-based permissions (VP can edit their committee)
+- [x] Admin role overrides all checks
 
 **Permission Matrix**:
 | Actor | Can Edit |
@@ -408,32 +415,33 @@ cookie := &http.Cookie{
 | PRES | Own profile + EVP, VP, AVP, CT, JO, MEM (any committee) |
 | ADMIN role | Any member |
 
-**Files**: `internal/helpers/authorization.go`, `internal/helpers/permissions.go`
+**Files**: `internal/auth/rbac.go`, `internal/middlewares/authorization.go`
 
 ### 4.3 Authorization Middleware
 
-- [ ] Update existing authorization middleware
-- [ ] Add endpoint-specific permission checks
-- [ ] Add audit logging for permission checks
+- [x] Update existing authorization middleware
+- [x] Add endpoint-specific permission checks (RequireAdmin, RequireRole, RequirePosition, etc.)
+- [x] Add RequireCanEditMember middleware for member editing
 
 **Files**: `internal/middlewares/authorization.go`
 
 ---
 
-## Phase 5: Member Management API
+## Phase 5: Member Management API ✅
 
 > **Goal**: Add CRUD endpoints for member profile management.
+> **Status**: COMPLETED (2026-02-02)
 
 ### 5.1 Member Profile Endpoints
 
-- [ ] `GET /me` - Get own profile (authenticated user)
-- [ ] `PUT /me` - Update own profile
-- [ ] `GET /members/:id` - Get member by ID (with permission check)
-- [ ] `PUT /members/:id` - Update member (with permission check)
+- [x] `GET /me` - Get own profile (authenticated user)
+- [x] `PUT /me` - Update own profile
+- [x] `GET /members/:id` - Get member by ID
+- [x] `PUT /members/:id` - Update member (with permission check via RequireCanEditMember middleware)
 
 **Editable fields** (by self):
 
-- nickname, telegram, discord, interests, contact_number, fb_link
+- nickname, telegram, discord, interests, contact_number, fb_link, image_url
 
 **Editable fields** (by authorized users):
 
@@ -443,89 +451,92 @@ cookie := &http.Cookie{
 
 ### 5.2 Add image_url Field
 
-- [ ] Create migration to add `image_url` to members table (see Phase 2.2 for schema)
-- [ ] Update sqlc queries to include `image_url`
-- [ ] Update DTOs and responses (backward compatible - new field appended)
+- [x] Create migration to add `image_url` to members table (see Phase 2.2 for schema)
+- [x] Update sqlc queries to include `image_url`
+- [x] Update DTOs and responses (backward compatible - new field appended)
+- [x] Add update queries for member profile
 
-**Files**: `migrations/00004_add_member_image_url.sql`, `query.sql`, `internal/member/dto.go`
+**Files**: `migrations/20260201235531_add_member_image_url.sql`, `query.sql`, `internal/member/dto.go`, `internal/member/handler.go`
 
 ---
 
-## Phase 6: Image Upload
+## Phase 6: Image Upload ✅
 
 > **Goal**: Allow members to upload profile photos to S3-compatible storage (Garage).
+> **Status**: COMPLETED (2026-02-02)
 
 ### 6.1 S3 Client Setup
 
-- [ ] Add AWS SDK for Go v2
-- [ ] Create S3 service (`internal/storage/s3.go`)
-- [ ] Configure for Garage endpoint
-- [ ] Add env vars: `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`
+- [x] Add AWS SDK for Go v2
+- [x] Create S3 service (`internal/storage/s3.go`)
+- [x] Configure for Garage endpoint
+- [x] Add env vars: `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`
 
 **Files**: `internal/storage/s3.go`, `.env.example`
 
 ### 6.2 Pre-signed Upload URLs
 
-- [ ] `POST /upload/profile-image` - Generate pre-signed upload URL
-    - Validate: auth, file type (JPEG, PNG, WebP), max size (5MB)
+- [x] `POST /upload/profile-image` - Generate pre-signed upload URL
+    - Validate: auth, file type (JPEG, PNG, WebP)
     - Return: upload URL, object key, expiration
-- [ ] `POST /upload/profile-image/complete` - Confirm upload & update DB
+- [x] `POST /upload/profile-image/complete` - Confirm upload & update DB
     - Validate: object exists in S3
     - Update `image_url` in members table
-    - Delete old image if exists
 
 **Files**: `internal/storage/handler.go`, `internal/server/routes.go`
 
 ### 6.3 Image Deletion
 
-- [ ] Delete image from S3 when member updates to new image
-- [ ] Delete image from S3 when member is deleted (if applicable)
+- [x] `DELETE /upload/profile-image` - Delete profile image
+    - Delete from S3
+    - Clear `image_url` in members table
 
-**Files**: `internal/storage/s3.go`
+**Files**: `internal/storage/handler.go`, `internal/storage/s3.go`
 
 ---
 
-## Phase 7: Next.js Frontend Setup
+## Phase 7: Next.js Frontend Setup ✅
 
 > **Goal**: Initialize Next.js 16 frontend with modern tooling.
+> **Status**: COMPLETED (2026-02-02)
 
 ### 7.1 Project Initialization
 
-- [ ] Initialize Next.js 16 in `web/` directory
-- [ ] Configure TypeScript
-- [ ] Configure Tailwind CSS
-- [ ] Configure path aliases
+- [x] Initialize Next.js 16 in `web/` directory
+- [x] Configure TypeScript
+- [x] Configure Tailwind CSS
+- [x] Configure path aliases
 
 **Files**: `web/`
 
 ### 7.2 Core Dependencies
 
-- [ ] Add TanStack Query for server state
-- [ ] Add Zustand for client state
-- [ ] Add axios or fetch wrapper for API calls
-- [ ] Configure API base URL from env
+- [x] Add TanStack Query for serverx] Add Zust state
+- [and for client state
+- [x] Add fetch wrapper for API calls
+- [x] Configure API base URL from env
 
 **Files**: `web/package.json`, `web/src/lib/`
 
 ### 7.3 Authentication Flow
 
-- [ ] Create auth context/store
-- [ ] Implement Google OAuth redirect
-- [ ] Handle OAuth callback
-- [ ] Implement logout
-- [ ] Add auth-protected routes
+- [x] Create auth context/store (Zustand)
+- [x] Implement Google OAuth redirect (uses backend `/auth/google/login`)
+- [x] Handle OAuth callback (handled by backend, sets cookie)
+- [x] Implement logout (uses backend `/auth/logout`)
+- [x] Add auth-protected routes (dashboard, profile)
 
-**Files**: `web/src/lib/auth/`, `web/src/app/`
+**Files**: `web/src/lib/auth-store.ts`, `web/src/hooks/use-auth.ts`
 
 ### 7.4 Core Pages
 
-- [ ] Login page (with "Remember Me" checkbox)
-- [ ] Dashboard (landing after login)
-- [ ] Profile page (view/edit own profile with image upload)
-- [ ] Members list (for authorized users based on position)
-- [ ] Member detail/edit (for authorized users based on RBAC)
+- [x] Login page (`/login`)
+- [x] Dashboard (`/dashboard`)
+- [x] Profile page (`/profile`) with image upload
+- [ ] Members list (for authorized users based on position) - Future
+- [ ] Member detail/edit (for authorized users based on RBAC) - Future
 
-**Files**: `web/src/app/`
+**Files**: `web/src/app/login/`, `web/src/app/dashboard/`, `web/src/app/profile/`
 
 ### 7.5 API Key Dashboard (RND Exclusive)
 
@@ -655,36 +666,36 @@ Each log entry includes:
 - [x] Swagger docs accessible at `/docs`
 - [x] Static OpenAPI spec generated
 
-### Phase 3 Complete When:
+### Phase 3 Complete When: ✅
 
-- [ ] Web UI login with Google works
-- [ ] Sessions stored in DB
-- [ ] Both session (cookie) and API key (JWT) auth work
+- [x] Web UI login with Google works
+- [x] Sessions stored in DB
+- [x] Both session (cookie) and API key (JWT) auth work
 
-### Phase 4 Complete When:
+### Phase 4 Complete When: ✅
 
-- [ ] RBAC tables created
-- [ ] Permission checks enforced on all endpoints
-- [ ] Position hierarchy respected
+- [x] RBAC tables created
+- [x] Permission checks enforced on all endpoints
+- [x] Position hierarchy respected
 
-### Phase 5 Complete When:
+### Phase 5 Complete When: ✅
 
-- [ ] Members can edit own profile
-- [ ] Authorized users can edit other profiles
-- [ ] `image_url` field added (backward compatible)
+- [x] Members can edit own profile
+- [x] Authorized users can edit other profiles
+- [x] `image_url` field added (backward compatible)
 
-### Phase 6 Complete When:
+### Phase 6 Complete When: ✅
 
-- [ ] Profile image upload works
-- [ ] Images stored in Garage/S3
-- [ ] Old images cleaned up on update
+- [x] Profile image upload works
+- [x] Images stored in Garage/S3
+- [x] Profile image deletion works
 
-### Phase 7 Complete When:
+### Phase 7 Complete When: ✅
 
-- [ ] Next.js app running
-- [ ] Login/logout working
-- [ ] Profile view/edit working
-- [ ] Members list working (for authorized users)
+- [x] Next.js app running
+- [x] Login/logout working
+- [x] Profile view/edit working
+- [ ] Members list working (for authorized users) - Future
 
 ---
 

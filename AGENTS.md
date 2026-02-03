@@ -228,3 +228,43 @@ logs/<timestamp>-phase<X>-<descriptive-title>.md
 Examples:
 - `logs/20260127-2200-phase1-fix-security-add-validation.md`
 - `logs/20260202-0123-phase6-image-upload.md`
+
+## Docker Commands
+
+### Build Docker Images
+
+```bash
+# Build API image
+docker build -t ghcr.io/<org>/lscs-core-api-api:latest -f Dockerfile.api .
+
+# Build Web image
+docker build -t ghcr.io/<org>/lscs-core-api-web:latest -f web/Dockerfile ./web
+```
+
+### Run Docker Containers
+
+```bash
+# Run API container
+docker run -p 8080:8080 ghcr.io/<org>/lscs-core-api-api:latest
+
+# Run Web container
+docker run -p 3000:3000 ghcr.io/<org>/lscs-core-api-web:latest
+```
+
+## CI/CD Workflows
+
+This project uses GitHub Actions for CI/CD with separate workflows for API and Web:
+
+| Workflow | Trigger | Output |
+|----------|---------|--------|
+| `001-test.yml` | Push to Go or Web files | Test results |
+| `002-build-push-api.yml` | Changes to Go files | API Docker image |
+| `003-build-push-web.yml` | Changes to Web files | Web Docker image |
+| `004-deploy-api.yml` | After API build completes | Triggers Dokploy deployment |
+| `005-deploy-web.yml` | After Web build completes | Triggers Dokploy deployment |
+
+### Path-Based Triggers
+
+- **API changes** (`**/*.go`, `go.mod`, `go.sum`, `Dockerfile.api`) → Only rebuilds API
+- **Web changes** (`web/**`, `web/Dockerfile`) → Only rebuilds Web
+- **Both changed** → Both services rebuild independently
