@@ -316,6 +316,24 @@ func (q *Queries) GetEmailsInAPIKey(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const getMemberAuthInfo = `-- name: GetMemberAuthInfo :one
+SELECT id, position_id, committee_id FROM members WHERE email = ?
+`
+
+type GetMemberAuthInfoRow struct {
+	ID          int32
+	PositionID  sql.NullString
+	CommitteeID sql.NullString
+}
+
+// lightweight query for authorization checks (no image_url dependency)
+func (q *Queries) GetMemberAuthInfo(ctx context.Context, email string) (GetMemberAuthInfoRow, error) {
+	row := q.db.QueryRowContext(ctx, getMemberAuthInfo, email)
+	var i GetMemberAuthInfoRow
+	err := row.Scan(&i.ID, &i.PositionID, &i.CommitteeID)
+	return i, err
+}
+
 const getMemberByEmail = `-- name: GetMemberByEmail :one
 SELECT id, email, full_name, nickname, position_id, committee_id, college, program,
        discord, interests, contact_number, fb_link, telegram, house_id, image_url

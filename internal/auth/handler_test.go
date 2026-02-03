@@ -68,7 +68,15 @@ func TestRequestKeyHandler(t *testing.T) {
 		assert.NoError(t, err)
 		defer db.Close()
 
-		// GetMemberInfo is called twice: once by AuthorizeIfRNDAndAVP, once by handler
+		// mock GetMemberAuthInfo for RBAC check (lightweight query)
+		authInfoRow := sqlmock.NewRows([]string{
+			"id", "position_id", "committee_id",
+		}).AddRow(1, "AVP", "RND")
+		mock.ExpectQuery("SELECT id, position_id, committee_id FROM members").
+			WithArgs(testEmail).
+			WillReturnRows(authInfoRow)
+
+		// GetMemberInfo is called by handler for full member info
 		memberRow := sqlmock.NewRows([]string{
 			"id", "email", "full_name", "nickname", "image_url",
 			"committee_id", "committee_name",
@@ -90,34 +98,13 @@ func TestRequestKeyHandler(t *testing.T) {
 			WithArgs(testEmail).
 			WillReturnRows(memberRow)
 
-		// second call to GetMemberInfo in the handler itself
-		memberRow2 := sqlmock.NewRows([]string{
-			"id", "email", "full_name", "nickname", "image_url",
-			"committee_id", "committee_name",
-			"division_id", "division_name",
-			"position_id", "position_name",
-			"house_name",
-			"contact_number", "college", "program",
-			"interests", "discord", "fb_link", "telegram",
-		}).AddRow(
-			1, testEmail, "Test User", nil, nil,
-			"RND", "Research and Development",
-			"INT", "Internal",
-			"AVP", "Associate Vice President",
-			"Gell-Mann",
-			nil, "CCS", "CS-ST",
-			nil, nil, nil, nil,
-		)
-		mock.ExpectQuery("SELECT (.+) FROM members m").
-			WithArgs(testEmail).
-			WillReturnRows(memberRow2)
-
 		mock.ExpectExec("INSERT INTO api_keys").
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		dbService := &mockDBService{db: db}
 		authService := &mockAuthService{}
-		h := NewHandler(authService, dbService)
+		rbacService := NewRBACService(dbService)
+		h := NewHandler(authService, dbService, rbacService)
 
 		if assert.NoError(t, h.RequestKeyHandler(c)) {
 			assert.Equal(t, http.StatusOK, rec.Code)
@@ -148,33 +135,21 @@ func TestRequestKeyHandler(t *testing.T) {
 		assert.NoError(t, err)
 		defer db.Close()
 
-		memberRow := sqlmock.NewRows([]string{
-			"id", "email", "full_name", "nickname", "image_url",
-			"committee_id", "committee_name",
-			"division_id", "division_name",
-			"position_id", "position_name",
-			"house_name",
-			"contact_number", "college", "program",
-			"interests", "discord", "fb_link", "telegram",
-		}).AddRow(
-			1, testEmail, "Test User", nil, nil,
-			"EXT", "External Affairs", // not RND
-			"INT", "Internal",
-			"MEM", "Member",
-			"Gell-Mann",
-			nil, "CCS", "CS-ST",
-			nil, nil, nil, nil,
-		)
-		mock.ExpectQuery("SELECT (.+) FROM members m").
+		// mock GetMemberAuthInfo for RBAC check - non-RND, non-AVP+ member
+		authInfoRow := sqlmock.NewRows([]string{
+			"id", "position_id", "committee_id",
+		}).AddRow(1, "MEM", "EXT") // not RND, not AVP+
+		mock.ExpectQuery("SELECT id, position_id, committee_id FROM members").
 			WithArgs(testEmail).
-			WillReturnRows(memberRow)
+			WillReturnRows(authInfoRow)
 
 		dbService := &mockDBService{db: db}
 		authService := &mockAuthService{}
-		h := NewHandler(authService, dbService)
+		rbacService := NewRBACService(dbService)
+		h := NewHandler(authService, dbService, rbacService)
 
 		if assert.NoError(t, h.RequestKeyHandler(c)) {
-			assert.Equal(t, http.StatusUnauthorized, rec.Code)
+			assert.Equal(t, http.StatusForbidden, rec.Code)
 		}
 	})
 
@@ -198,16 +173,18 @@ func TestRequestKeyHandler(t *testing.T) {
 		assert.NoError(t, err)
 		defer db.Close()
 
-		mock.ExpectQuery("SELECT (.+) FROM members m").
+		// mock GetMemberAuthInfo for RBAC check - no rows (not a member)
+		mock.ExpectQuery("SELECT id, position_id, committee_id FROM members").
 			WithArgs(testEmail).
 			WillReturnError(sql.ErrNoRows)
 
 		dbService := &mockDBService{db: db}
 		authService := &mockAuthService{}
-		h := NewHandler(authService, dbService)
+		rbacService := NewRBACService(dbService)
+		h := NewHandler(authService, dbService, rbacService)
 
 		if assert.NoError(t, h.RequestKeyHandler(c)) {
-			assert.Equal(t, http.StatusUnauthorized, rec.Code)
+			assert.Equal(t, http.StatusForbidden, rec.Code)
 		}
 	})
 
@@ -231,7 +208,8 @@ func TestRequestKeyHandler(t *testing.T) {
 
 		dbService := &mockDBService{db: db}
 		authService := &mockAuthService{}
-		h := NewHandler(authService, dbService)
+		rbacService := NewRBACService(dbService)
+		h := NewHandler(authService, dbService, rbacService)
 
 		if assert.NoError(t, h.RequestKeyHandler(c)) {
 			assert.Equal(t, http.StatusUnauthorized, rec.Code)

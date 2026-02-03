@@ -9,32 +9,7 @@ import (
 
 	"github.com/dlsu-lscs/lscs-core-api/internal/auth"
 	"github.com/dlsu-lscs/lscs-core-api/internal/database"
-	"github.com/dlsu-lscs/lscs-core-api/internal/helpers"
 )
-
-// AuthorizationMiddleware enforces that the user identified by "user_email" context key
-// is an active R&D member with AVP position or higher.
-// WARN: Deprecated: Use RBACMiddleware for more granular control
-func AuthorizationMiddleware(dbService database.Service) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			email, ok := c.Get("user_email").(string)
-			if !ok || email == "" {
-				log.Error().Msg("AuthorizationMiddleware: user_email not found in context")
-				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
-			}
-
-			// perform strict DB check
-			isAuthorized := helpers.AuthorizeIfRNDAndAVP(c.Request().Context(), dbService, email)
-			if !isAuthorized {
-				// the helper already logs the specific reason
-				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized: Insufficient privileges"})
-			}
-
-			return next(c)
-		}
-	}
-}
 
 // RequireAdmin middleware ensures the user has the ADMIN role
 func RequireAdmin(rbacService *auth.RBACService) echo.MiddlewareFunc {
@@ -119,6 +94,27 @@ func RequireAPIKeyAccess(rbacService *auth.RBACService) echo.MiddlewareFunc {
 			if !rbacService.CanAccessAPIKeyManagement(c.Request().Context(), memberID) {
 				log.Warn().Int32("member_id", memberID).Msg("API key access denied")
 				return c.JSON(http.StatusForbidden, map[string]string{"error": "API key management access required"})
+			}
+
+			return next(c)
+		}
+	}
+}
+
+// RequireAPIAccess middleware enforces JWT API route access.
+// Requires: RND committee member (any position) OR AVP+ position (any committee).
+// Uses email from context (set by JWTEmailMiddleware) and RBACService for authorization.
+func RequireAPIAccess(rbacService *auth.RBACService) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			email, ok := c.Get("user_email").(string)
+			if !ok || email == "" {
+				log.Error().Msg("RequireAPIAccess: user_email not found in context")
+				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+			}
+
+			if !rbacService.CanAccessAPIByEmail(c.Request().Context(), email) {
+				return c.JSON(http.StatusForbidden, map[string]string{"error": "Insufficient privileges"})
 			}
 
 			return next(c)

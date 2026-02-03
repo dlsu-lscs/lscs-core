@@ -74,7 +74,7 @@ func (s *Server) RegisterRoutes(e *echo.Echo) {
 		SigningMethod: "HS256",
 	}))
 	protected.Use(middlewares.JWTEmailMiddleware)
-	protected.Use(middlewares.AuthorizationMiddleware(s.db))
+	protected.Use(middlewares.RequireAPIAccess(s.rbacService))
 
 	protected.GET("/members", s.memberHandler.GetAllMembersHandler)
 	protected.GET("/committees", s.committeeHandler.GetAllCommitteesHandler)

@@ -201,3 +201,7 @@ ORDER BY mr.granted_at DESC;
 
 -- name: IsAdmin :one
 SELECT EXISTS(SELECT 1 FROM member_roles WHERE member_id = ? AND role_id = 'ADMIN');
+
+-- name: GetMemberAuthInfo :one
+-- lightweight query for authorization checks (no image_url dependency)
+SELECT id, position_id, committee_id FROM members WHERE email = ?;

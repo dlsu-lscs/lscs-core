@@ -36,12 +36,14 @@ type RequestKeyResponse struct {
 type Handler struct {
 	authService Service
 	dbService   database.Service
+	rbacService *RBACService
 }
 
-func NewHandler(authService Service, dbService database.Service) *Handler {
+func NewHandler(authService Service, dbService database.Service, rbacService *RBACService) *Handler {
 	return &Handler{
 		authService: authService,
 		dbService:   dbService,
+		rbacService: rbacService,
 	}
 }
 
@@ -72,12 +74,12 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 	}
 
-	isAuthorized := helpers.AuthorizeIfRNDAndAVP(c.Request().Context(), h.dbService, emailRequestor)
+	isAuthorized := h.rbacService.CanAccessAPIByEmail(c.Request().Context(), emailRequestor)
 	if !isAuthorized {
 		// forbidden
 		// only expose the reason why its unauthorized to the server logs (not on client)
 		log.Error().Str("email", emailRequestor).Msg("user has unauthorized position or committee")
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User has unauthorized position or committee"})
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "User has unauthorized position or committee"})
 	}
 
 	var req RequestKeyRequest
@@ -226,7 +228,7 @@ func (h *Handler) ListAPIKeys(c echo.Context) error {
 	}
 
 	// Check RND AVP+ authorization
-	isAuthorized := helpers.AuthorizeIfRNDAndAVP(ctx, h.dbService, email)
+	isAuthorized := h.rbacService.CanAccessAPIByEmail(ctx, email)
 	if !isAuthorized {
 		log.Error().Str("email", email).Msg("user has unauthorized position or committee for API key management")
 		return helpers.ErrForbidden(c, "RND AVP+ position required for API key management")
@@ -293,7 +295,7 @@ func (h *Handler) RevokeAPIKey(c echo.Context) error {
 	}
 
 	// Check RND AVP+ authorization
-	isAuthorized := helpers.AuthorizeIfRNDAndAVP(ctx, h.dbService, email)
+	isAuthorized := h.rbacService.CanAccessAPIByEmail(ctx, email)
 	if !isAuthorized {
 		log.Error().Str("email", email).Msg("user has unauthorized position or committee for API key management")
 		return helpers.ErrForbidden(c, "RND AVP+ position required for API key management")

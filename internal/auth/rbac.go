@@ -191,6 +191,39 @@ func (s *RBACService) CanAccessAPIKeyManagement(ctx context.Context, memberID in
 	return GetPositionLevel(member.PositionID.String) >= GetPositionLevel("AVP")
 }
 
+// CanAccessAPIByEmail checks if a member (by email) can access JWT-protected API routes.
+// Requirements: Member of RND committee (any position) OR AVP+ position (any committee).
+// Uses lightweight GetMemberAuthInfo query to avoid dependency on optional columns like image_url.
+func (s *RBACService) CanAccessAPIByEmail(ctx context.Context, email string) bool {
+	q := repository.New(s.dbService.GetConnection())
+	member, err := q.GetMemberAuthInfo(ctx, email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Warn().Str("email", email).Msg("API access denied: not an LSCS member")
+			return false
+		}
+		log.Error().Err(err).Str("email", email).Msg("failed to get member auth info")
+		return false
+	}
+
+	// RND members can access (any position)
+	if member.CommitteeID.String == "RND" {
+		return true
+	}
+
+	// AVP and above can access (any committee)
+	if GetPositionLevel(member.PositionID.String) >= GetPositionLevel("AVP") {
+		return true
+	}
+
+	log.Warn().
+		Str("email", email).
+		Str("committee", member.CommitteeID.String).
+		Str("position", member.PositionID.String).
+		Msg("API access denied: not RND and not AVP+")
+	return false
+}
+
 // EditableField represents which fields can be edited by whom
 type EditableField string
 
