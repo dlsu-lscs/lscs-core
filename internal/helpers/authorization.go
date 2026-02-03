@@ -10,7 +10,9 @@ import (
 	"github.com/dlsu-lscs/lscs-core-api/internal/repository"
 )
 
-// AuthorizeIfRNDAndAVP assumes a member, then checks if member is in RND and AVP or higher
+// AuthorizeIfRNDAndAVP checks if member is:
+// 1. In RND committee (any position), OR
+// 2. AVP position or higher (any committee)
 func AuthorizeIfRNDAndAVP(ctx context.Context, dbService database.Service, email string) bool {
 	dbconn := dbService.GetConnection()
 	q := repository.New(dbconn)
@@ -35,15 +37,20 @@ func AuthorizeIfRNDAndAVP(ctx context.Context, dbService database.Service, email
 		return false
 	}
 
-	// only allow RND members and those that are AVPs and above
-	if authenticatedRequesterInfo.CommitteeID.String != "RND" {
-		log.Error().Str("email", email).Msg("not a member of Research and Development")
-		if !allowedPositions[authenticatedRequesterInfo.PositionID.String] {
-			log.Error().Str("email", email).Msg("not AVP or higher")
-			return false
-		}
-		return false
+	// RND members are always authorized (any position)
+	if authenticatedRequesterInfo.CommitteeID.String == "RND" {
+		return true
 	}
 
-	return true
+	// non-RND members need AVP+ position
+	if allowedPositions[authenticatedRequesterInfo.PositionID.String] {
+		return true
+	}
+
+	log.Warn().
+		Str("email", email).
+		Str("committee", authenticatedRequesterInfo.CommitteeID.String).
+		Str("position", authenticatedRequesterInfo.PositionID.String).
+		Msg("authorization denied: not RND and not AVP+")
+	return false
 }

@@ -14,7 +14,7 @@ import (
 
 // AuthorizationMiddleware enforces that the user identified by "user_email" context key
 // is an active R&D member with AVP position or higher.
-// Deprecated: Use RBACMiddleware for more granular control
+// WARN: Deprecated: Use RBACMiddleware for more granular control
 func AuthorizationMiddleware(dbService database.Service) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -207,7 +207,6 @@ func getMemberByID(c echo.Context, dbService database.Service, memberID int32) (
 		`SELECT id, position_id, committee_id FROM members WHERE id = ?`,
 		memberID,
 	).Scan(&member.ID, &member.PositionID, &member.CommitteeID)
-
 	if err != nil {
 		log.Error().Err(err).Int32("member_id", memberID).Msg("failed to get member for authorization")
 		return nil, err
