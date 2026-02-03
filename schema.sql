@@ -96,6 +96,7 @@ CREATE TABLE members (
     contact_number VARCHAR(32),
     fb_link VARCHAR(255),
     house_id INT,
+    image_url VARCHAR(512),
     FOREIGN KEY (position_id) REFERENCES positions(position_id) ON DELETE SET NULL,
     FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE SET NULL
 );
@@ -132,6 +133,20 @@ CREATE TABLE api_keys (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP,
     FOREIGN KEY (member_email) REFERENCES members(email) ON DELETE CASCADE
+);
+
+-- Table: sessions (for web UI authentication)
+CREATE TABLE sessions (
+    id VARCHAR(64) PRIMARY KEY,
+    member_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    user_agent VARCHAR(512),
+    ip_address VARCHAR(45),
+    FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+    INDEX idx_sessions_member_id (member_id),
+    INDEX idx_sessions_expires_at (expires_at)
 );
 
 -- Table: events
@@ -256,4 +271,23 @@ CREATE TABLE pub_requests (
     dimensions VARCHAR(255),
     FOREIGN KEY (event_id) REFERENCES events(id),
     FOREIGN KEY (requester_id) REFERENCES members(id)
+);
+
+-- Table: roles (system-level roles separate from position hierarchy)
+CREATE TABLE roles (
+    id VARCHAR(20) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT
+);
+
+-- Table: member_roles (many-to-many: members <-> roles)
+CREATE TABLE member_roles (
+    member_id INT NOT NULL,
+    role_id VARCHAR(20) NOT NULL,
+    granted_by INT,
+    granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (member_id, role_id),
+    FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+    FOREIGN KEY (granted_by) REFERENCES members(id) ON DELETE SET NULL
 );
