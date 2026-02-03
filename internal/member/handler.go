@@ -215,3 +215,365 @@ func (h *Handler) CheckIDIfMember(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, response)
 }
+
+// GetMeHandler retrieves the authenticated member's profile
+// @Summary Get my profile
+// @Description Get the authenticated member's complete profile information
+// @Tags members
+// @Produce json
+// @Success 200 {object} FullInfoMemberResponse "Member profile"
+// @Failure 401 {object} helpers.ErrorResponse "Unauthorized"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security SessionAuth
+// @Router /me [get]
+func (h *Handler) GetMeHandler(c echo.Context) error {
+	ctx := c.Request().Context()
+	dbconn := h.dbService.GetConnection()
+	q := repository.New(dbconn)
+
+	email, ok := c.Get("user_email").(string)
+	if !ok || email == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	memberInfo, err := q.GetMemberInfo(ctx, email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "Member not found"})
+		}
+		log.Error().Err(err).Msg("error getting member profile")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+	}
+
+	response := toFullInfoMemberResponse(repository.GetMemberInfoRow(memberInfo))
+
+	return c.JSON(http.StatusOK, response)
+}
+
+// UpdateMeHandler updates the authenticated member's own profile
+// @Summary Update my profile
+// @Description Update the authenticated member's profile (self-editable fields only)
+// @Tags members
+// @Accept json
+// @Produce json
+// @Param request body UpdateSelfRequest true "Update request"
+// @Success 200 {object} FullInfoMemberResponse "Updated profile"
+// @Failure 400 {object} helpers.ErrorResponse "Invalid request"
+// @Failure 401 {object} helpers.ErrorResponse "Unauthorized"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security SessionAuth
+// @Router /me [put]
+func (h *Handler) UpdateMeHandler(c echo.Context) error {
+	ctx := c.Request().Context()
+	dbconn := h.dbService.GetConnection()
+	q := repository.New(dbconn)
+
+	email, ok := c.Get("user_email").(string)
+	if !ok || email == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	// get member ID first
+	member, err := q.GetMemberInfo(ctx, email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "Member not found"})
+		}
+		log.Error().Err(err).Msg("error getting member")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+	}
+
+	memberID := member.ID
+
+	// bind and validate request
+	req := new(UpdateSelfRequest)
+	if err := helpers.BindAndValidate(c, req); err != nil {
+		return err
+	}
+
+	// prepare update values
+	nickname := sql.NullString{Valid: false}
+	if req.Nickname != nil {
+		nickname.String = *req.Nickname
+		nickname.Valid = true
+	}
+
+	telegram := sql.NullString{Valid: false}
+	if req.Telegram != nil {
+		telegram.String = *req.Telegram
+		telegram.Valid = true
+	}
+
+	discord := sql.NullString{Valid: false}
+	if req.Discord != nil {
+		discord.String = *req.Discord
+		discord.Valid = true
+	}
+
+	interests := sql.NullString{Valid: false}
+	if req.Interests != nil {
+		interests.String = *req.Interests
+		interests.Valid = true
+	}
+
+	contactNumber := sql.NullString{Valid: false}
+	if req.ContactNumber != nil {
+		contactNumber.String = *req.ContactNumber
+		contactNumber.Valid = true
+	}
+
+	fbLink := sql.NullString{Valid: false}
+	if req.FbLink != nil {
+		fbLink.String = *req.FbLink
+		fbLink.Valid = true
+	}
+
+	imageURL := sql.NullString{Valid: false}
+	if req.ImageURL != nil {
+		imageURL.String = *req.ImageURL
+		imageURL.Valid = true
+	}
+
+	// execute update
+	err = q.UpdateMemberSelf(ctx, repository.UpdateMemberSelfParams{
+		Nickname:      nickname,
+		Telegram:      telegram,
+		Discord:       discord,
+		Interests:     interests,
+		ContactNumber: contactNumber,
+		FbLink:        fbLink,
+		ImageUrl:      imageURL,
+		ID:            memberID,
+	})
+
+	if err != nil {
+		log.Error().Err(err).Int32("member_id", memberID).Msg("error updating member")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update profile"})
+	}
+
+	// fetch updated profile
+	updatedMember, err := q.GetMemberInfoById(ctx, memberID)
+	if err != nil {
+		log.Error().Err(err).Int32("member_id", memberID).Msg("error fetching updated member")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch updated profile"})
+	}
+
+	response := toFullInfoMemberResponse(repository.GetMemberInfoRow(updatedMember))
+
+	return c.JSON(http.StatusOK, response)
+}
+
+// GetMemberByIDHandler retrieves a member's profile by ID
+// @Summary Get member by ID
+// @Description Get a member's complete profile information by their ID
+// @Tags members
+// @Produce json
+// @Param id path int true "Member ID"
+// @Success 200 {object} FullInfoMemberResponse "Member profile"
+// @Failure 400 {object} helpers.ErrorResponse "Invalid ID"
+// @Failure 401 {object} helpers.ErrorResponse "Unauthorized"
+// @Failure 404 {object} helpers.ErrorResponse "Member not found"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security SessionAuth
+// @Router /members/{id} [get]
+func (h *Handler) GetMemberByIDHandler(c echo.Context) error {
+	ctx := c.Request().Context()
+	dbconn := h.dbService.GetConnection()
+	q := repository.New(dbconn)
+
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid member ID"})
+	}
+
+	memberInfo, err := q.GetMemberInfoById(ctx, int32(id))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "Member not found"})
+		}
+		log.Error().Err(err).Int64("id", id).Msg("error getting member")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+	}
+
+	response := toFullInfoMemberResponse(repository.GetMemberInfoRow(memberInfo))
+
+	return c.JSON(http.StatusOK, response)
+}
+
+// UpdateMemberByIDHandler updates a member's profile (admin/authorized only)
+// @Summary Update member by ID
+// @Description Update a member's profile (requires authorization)
+// @Tags members
+// @Accept json
+// @Produce json
+// @Param id path int true "Member ID"
+// @Param request body UpdateMemberRequest true "Update request"
+// @Success 200 {object} FullInfoMemberResponse "Updated profile"
+// @Failure 400 {object} helpers.ErrorResponse "Invalid request"
+// @Failure 401 {object} helpers.ErrorResponse "Unauthorized"
+// @Failure 403 {object} helpers.ErrorResponse "Forbidden - cannot edit this member"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security SessionAuth
+// @Router /members/{id} [put]
+func (h *Handler) UpdateMemberByIDHandler(c echo.Context) error {
+	ctx := c.Request().Context()
+	dbconn := h.dbService.GetConnection()
+	q := repository.New(dbconn)
+
+	// get actor ID from context
+	actorID, ok := c.Get("user_id").(int32)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	// get target member ID from path
+	idStr := c.Param("id")
+	targetID, err := strconv.ParseInt(idStr, 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid member ID"})
+	}
+
+	// check if target member exists
+	_, err = q.GetMemberInfoById(ctx, int32(targetID))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "Member not found"})
+		}
+		log.Error().Err(err).Int64("id", targetID).Msg("error getting member")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+	}
+
+	// bind and validate request
+	req := new(UpdateMemberRequest)
+	if err := helpers.BindAndValidate(c, req); err != nil {
+		return err
+	}
+
+	// prepare update values (only set non-nil fields)
+	// FullName and Email are required strings, use existing value if not provided
+	fullName := ""
+	if req.FullName != nil {
+		fullName = *req.FullName
+	} else {
+		// fetch existing full name
+		existing, _ := q.GetMemberInfoById(ctx, int32(targetID))
+		fullName = existing.FullName
+	}
+
+	email := ""
+	if req.Email != nil {
+		email = *req.Email
+	} else {
+		// fetch existing email
+		existing, _ := q.GetMemberInfoById(ctx, int32(targetID))
+		email = existing.Email
+	}
+
+	nickname := sql.NullString{Valid: false}
+	if req.Nickname != nil {
+		nickname.String = *req.Nickname
+		nickname.Valid = true
+	}
+
+	positionID := sql.NullString{Valid: false}
+	if req.PositionID != nil {
+		positionID.String = *req.PositionID
+		positionID.Valid = true
+	}
+
+	committeeID := sql.NullString{Valid: false}
+	if req.CommitteeID != nil {
+		committeeID.String = *req.CommitteeID
+		committeeID.Valid = true
+	}
+
+	college := sql.NullString{Valid: false}
+	if req.College != nil {
+		college.String = *req.College
+		college.Valid = true
+	}
+
+	program := sql.NullString{Valid: false}
+	if req.Program != nil {
+		program.String = *req.Program
+		program.Valid = true
+	}
+
+	houseID := sql.NullInt32{Valid: false}
+	if req.HouseID != nil {
+		houseID.Int32 = int32(*req.HouseID)
+		houseID.Valid = true
+	}
+
+	telegram := sql.NullString{Valid: false}
+	if req.Telegram != nil {
+		telegram.String = *req.Telegram
+		telegram.Valid = true
+	}
+
+	discord := sql.NullString{Valid: false}
+	if req.Discord != nil {
+		discord.String = *req.Discord
+		discord.Valid = true
+	}
+
+	interests := sql.NullString{Valid: false}
+	if req.Interests != nil {
+		interests.String = *req.Interests
+		interests.Valid = true
+	}
+
+	contactNumber := sql.NullString{Valid: false}
+	if req.ContactNumber != nil {
+		contactNumber.String = *req.ContactNumber
+		contactNumber.Valid = true
+	}
+
+	fbLink := sql.NullString{Valid: false}
+	if req.FbLink != nil {
+		fbLink.String = *req.FbLink
+		fbLink.Valid = true
+	}
+
+	imageURL := sql.NullString{Valid: false}
+	if req.ImageURL != nil {
+		imageURL.String = *req.ImageURL
+		imageURL.Valid = true
+	}
+
+	// execute update
+	err = q.UpdateMemberById(ctx, repository.UpdateMemberByIdParams{
+		FullName:      fullName,
+		Nickname:      nickname,
+		Email:         email,
+		PositionID:    positionID,
+		CommitteeID:   committeeID,
+		College:       college,
+		Program:       program,
+		HouseID:       houseID,
+		Telegram:      telegram,
+		Discord:       discord,
+		Interests:     interests,
+		ContactNumber: contactNumber,
+		FbLink:        fbLink,
+		ImageUrl:      imageURL,
+		ID:            int32(targetID),
+	})
+
+	if err != nil {
+		log.Error().Err(err).Int32("actor_id", actorID).Int64("target_id", targetID).Msg("error updating member")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update member"})
+	}
+
+	// fetch updated profile
+	updatedMember, err := q.GetMemberInfoById(ctx, int32(targetID))
+	if err != nil {
+		log.Error().Err(err).Int64("id", targetID).Msg("error fetching updated member")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch updated profile"})
+	}
+
+	response := toFullInfoMemberResponse(repository.GetMemberInfoRow(updatedMember))
+
+	return c.JSON(http.StatusOK, response)
+}

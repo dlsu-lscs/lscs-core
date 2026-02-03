@@ -70,7 +70,7 @@ func TestRequestKeyHandler(t *testing.T) {
 
 		// GetMemberInfo is called twice: once by AuthorizeIfRNDAndAVP, once by handler
 		memberRow := sqlmock.NewRows([]string{
-			"id", "email", "full_name", "nickname",
+			"id", "email", "full_name", "nickname", "image_url",
 			"committee_id", "committee_name",
 			"division_id", "division_name",
 			"position_id", "position_name",
@@ -78,7 +78,7 @@ func TestRequestKeyHandler(t *testing.T) {
 			"contact_number", "college", "program",
 			"interests", "discord", "fb_link", "telegram",
 		}).AddRow(
-			1, testEmail, "Test User", nil,
+			1, testEmail, "Test User", nil, nil,
 			"RND", "Research and Development",
 			"INT", "Internal",
 			"AVP", "Associate Vice President",
@@ -92,7 +92,7 @@ func TestRequestKeyHandler(t *testing.T) {
 
 		// second call to GetMemberInfo in the handler itself
 		memberRow2 := sqlmock.NewRows([]string{
-			"id", "email", "full_name", "nickname",
+			"id", "email", "full_name", "nickname", "image_url",
 			"committee_id", "committee_name",
 			"division_id", "division_name",
 			"position_id", "position_name",
@@ -100,7 +100,7 @@ func TestRequestKeyHandler(t *testing.T) {
 			"contact_number", "college", "program",
 			"interests", "discord", "fb_link", "telegram",
 		}).AddRow(
-			1, testEmail, "Test User", nil,
+			1, testEmail, "Test User", nil, nil,
 			"RND", "Research and Development",
 			"INT", "Internal",
 			"AVP", "Associate Vice President",
@@ -149,7 +149,7 @@ func TestRequestKeyHandler(t *testing.T) {
 		defer db.Close()
 
 		memberRow := sqlmock.NewRows([]string{
-			"id", "email", "full_name", "nickname",
+			"id", "email", "full_name", "nickname", "image_url",
 			"committee_id", "committee_name",
 			"division_id", "division_name",
 			"position_id", "position_name",
@@ -157,7 +157,7 @@ func TestRequestKeyHandler(t *testing.T) {
 			"contact_number", "college", "program",
 			"interests", "discord", "fb_link", "telegram",
 		}).AddRow(
-			1, testEmail, "Test User", nil,
+			1, testEmail, "Test User", nil, nil,
 			"EXT", "External Affairs", // not RND
 			"INT", "Internal",
 			"MEM", "Member",

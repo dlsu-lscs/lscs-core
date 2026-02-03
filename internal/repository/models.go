@@ -216,6 +216,14 @@ type Member struct {
 	ContactNumber sql.NullString
 	FbLink        sql.NullString
 	HouseID       sql.NullInt32
+	ImageUrl      sql.NullString
+}
+
+type MemberRole struct {
+	MemberID  int32
+	RoleID    string
+	GrantedBy sql.NullInt32
+	GrantedAt sql.NullTime
 }
 
 type Position struct {
@@ -249,6 +257,22 @@ type PubRequest struct {
 	CreatedAt   time.Time
 	RequesterID sql.NullInt32
 	Dimensions  sql.NullString
+}
+
+type Role struct {
+	ID          string
+	Name        string
+	Description sql.NullString
+}
+
+type Session struct {
+	ID           string
+	MemberID     int32
+	CreatedAt    sql.NullTime
+	ExpiresAt    time.Time
+	LastActivity sql.NullTime
+	UserAgent    sql.NullString
+	IpAddress    sql.NullString
 }
 
 type Term struct {

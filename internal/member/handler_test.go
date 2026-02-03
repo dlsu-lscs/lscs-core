@@ -30,10 +30,10 @@ func (m *mockDBService) GetConnection() *sql.DB {
 	return m.db
 }
 
-// helper to create member info rows with 18 columns matching GetMemberInfo query
+// helper to create member info rows with 19 columns matching GetMemberInfo query (including image_url)
 func createMemberInfoRow(email, fullName string) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "email", "full_name", "nickname",
+		"id", "email", "full_name", "nickname", "image_url",
 		"committee_id", "committee_name",
 		"division_id", "division_name",
 		"position_id", "position_name",
@@ -41,7 +41,7 @@ func createMemberInfoRow(email, fullName string) *sqlmock.Rows {
 		"contact_number", "college", "program",
 		"interests", "discord", "fb_link", "telegram",
 	}).AddRow(
-		1, email, fullName, nil,
+		1, email, fullName, nil, nil,
 		"RND", "Research and Development",
 		"INT", "Internal",
 		"MEM", "Member",
@@ -51,10 +51,10 @@ func createMemberInfoRow(email, fullName string) *sqlmock.Rows {
 	)
 }
 
-// helper to create member info by ID rows with 18 columns matching GetMemberInfoById query
+// helper to create member info by ID rows with 19 columns matching GetMemberInfoById query (including image_url)
 func createMemberInfoByIdRow(id int, email, fullName string) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "email", "full_name", "nickname",
+		"id", "email", "full_name", "nickname", "image_url",
 		"committee_id", "committee_name",
 		"division_id", "division_name",
 		"position_id", "position_name",
@@ -62,7 +62,7 @@ func createMemberInfoByIdRow(id int, email, fullName string) *sqlmock.Rows {
 		"contact_number", "college", "program",
 		"interests", "discord", "fb_link", "telegram",
 	}).AddRow(
-		id, email, fullName, nil,
+		id, email, fullName, nil, nil,
 		"RND", "Research and Development",
 		"INT", "Internal",
 		"MEM", "Member",
@@ -225,11 +225,11 @@ func TestGetAllMembersHandler(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "full_name", "nickname", "email", "telegram",
 		"position_id", "committee_id", "college", "program",
-		"discord", "interests", "contact_number", "fb_link", "house_name",
+		"discord", "interests", "contact_number", "fb_link", "image_url", "house_name",
 	}).AddRow(
 		1, "Test User 1", nil, "test1@dlsu.edu.ph", nil,
 		"MEM", "RND", "CCS", "CS-ST",
-		nil, nil, nil, nil, "Gell-Mann",
+		nil, nil, nil, nil, nil, "Gell-Mann",
 	)
 	mock.ExpectQuery("SELECT (.+) FROM members m").WillReturnRows(rows)
 

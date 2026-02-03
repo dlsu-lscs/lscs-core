@@ -8,6 +8,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 const checkAllowedOriginExists = `-- name: CheckAllowedOriginExists :one
@@ -41,12 +42,93 @@ func (q *Queries) CheckIdIfMember(ctx context.Context, id int32) (int32, error) 
 	return id, err
 }
 
+const cleanupExpiredSessions = `-- name: CleanupExpiredSessions :exec
+DELETE FROM sessions WHERE expires_at < NOW()
+`
+
+func (q *Queries) CleanupExpiredSessions(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, cleanupExpiredSessions)
+	return err
+}
+
+const createSession = `-- name: CreateSession :exec
+
+INSERT INTO sessions (id, member_id, expires_at, user_agent, ip_address)
+VALUES (?, ?, ?, ?, ?)
+`
+
+type CreateSessionParams struct {
+	ID        string
+	MemberID  int32
+	ExpiresAt time.Time
+	UserAgent sql.NullString
+	IpAddress sql.NullString
+}
+
+// Session queries for web UI authentication
+func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) error {
+	_, err := q.db.ExecContext(ctx, createSession,
+		arg.ID,
+		arg.MemberID,
+		arg.ExpiresAt,
+		arg.UserAgent,
+		arg.IpAddress,
+	)
+	return err
+}
+
 const deleteAPIKey = `-- name: DeleteAPIKey :exec
 DELETE FROM api_keys WHERE member_email = ? LIMIT 1
 `
 
 func (q *Queries) DeleteAPIKey(ctx context.Context, memberEmail string) error {
 	_, err := q.db.ExecContext(ctx, deleteAPIKey, memberEmail)
+	return err
+}
+
+const deleteAPIKeyById = `-- name: DeleteAPIKeyById :exec
+DELETE FROM api_keys WHERE api_key_id = ? AND member_email = ?
+`
+
+type DeleteAPIKeyByIdParams struct {
+	ApiKeyID    int32
+	MemberEmail string
+}
+
+func (q *Queries) DeleteAPIKeyById(ctx context.Context, arg DeleteAPIKeyByIdParams) error {
+	_, err := q.db.ExecContext(ctx, deleteAPIKeyById, arg.ApiKeyID, arg.MemberEmail)
+	return err
+}
+
+const deleteAllSessionsForMember = `-- name: DeleteAllSessionsForMember :exec
+DELETE FROM sessions WHERE member_id = ?
+`
+
+func (q *Queries) DeleteAllSessionsForMember(ctx context.Context, memberID int32) error {
+	_, err := q.db.ExecContext(ctx, deleteAllSessionsForMember, memberID)
+	return err
+}
+
+const deleteSession = `-- name: DeleteSession :exec
+DELETE FROM sessions WHERE id = ?
+`
+
+func (q *Queries) DeleteSession(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteSession, id)
+	return err
+}
+
+const extendSession = `-- name: ExtendSession :exec
+UPDATE sessions SET expires_at = ?, last_activity = NOW() WHERE id = ?
+`
+
+type ExtendSessionParams struct {
+	ExpiresAt time.Time
+	ID        string
+}
+
+func (q *Queries) ExtendSession(ctx context.Context, arg ExtendSessionParams) error {
+	_, err := q.db.ExecContext(ctx, extendSession, arg.ExpiresAt, arg.ID)
 	return err
 }
 
@@ -178,6 +260,35 @@ func (q *Queries) GetAllDivisions(ctx context.Context) ([]Division, error) {
 	return items, nil
 }
 
+const getAllRoles = `-- name: GetAllRoles :many
+
+SELECT id, name, description FROM roles ORDER BY id
+`
+
+// RBAC: Role queries
+func (q *Queries) GetAllRoles(ctx context.Context) ([]Role, error) {
+	rows, err := q.db.QueryContext(ctx, getAllRoles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Role
+	for rows.Next() {
+		var i Role
+		if err := rows.Scan(&i.ID, &i.Name, &i.Description); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getEmailsInAPIKey = `-- name: GetEmailsInAPIKey :many
 SELECT member_email FROM api_keys
 `
@@ -205,10 +316,57 @@ func (q *Queries) GetEmailsInAPIKey(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const getMemberByEmail = `-- name: GetMemberByEmail :one
+SELECT id, email, full_name, nickname, position_id, committee_id, college, program,
+       discord, interests, contact_number, fb_link, telegram, house_id, image_url
+FROM members WHERE email = ?
+`
+
+type GetMemberByEmailRow struct {
+	ID            int32
+	Email         string
+	FullName      string
+	Nickname      sql.NullString
+	PositionID    sql.NullString
+	CommitteeID   sql.NullString
+	College       sql.NullString
+	Program       sql.NullString
+	Discord       sql.NullString
+	Interests     sql.NullString
+	ContactNumber sql.NullString
+	FbLink        sql.NullString
+	Telegram      sql.NullString
+	HouseID       sql.NullInt32
+	ImageUrl      sql.NullString
+}
+
+func (q *Queries) GetMemberByEmail(ctx context.Context, email string) (GetMemberByEmailRow, error) {
+	row := q.db.QueryRowContext(ctx, getMemberByEmail, email)
+	var i GetMemberByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.FullName,
+		&i.Nickname,
+		&i.PositionID,
+		&i.CommitteeID,
+		&i.College,
+		&i.Program,
+		&i.Discord,
+		&i.Interests,
+		&i.ContactNumber,
+		&i.FbLink,
+		&i.Telegram,
+		&i.HouseID,
+		&i.ImageUrl,
+	)
+	return i, err
+}
+
 const getMemberInfo = `-- name: GetMemberInfo :one
-SELECT 
-  m.id, m.email, m.full_name, m.nickname, 
-  c.committee_id, c.committee_name, 
+SELECT
+  m.id, m.email, m.full_name, m.nickname, m.image_url,
+  c.committee_id, c.committee_name,
   d.division_id, d.division_name,
   p.position_id, p.position_name,
   h.name as house_name,
@@ -227,6 +385,7 @@ type GetMemberInfoRow struct {
 	Email         string
 	FullName      string
 	Nickname      sql.NullString
+	ImageUrl      sql.NullString
 	CommitteeID   sql.NullString
 	CommitteeName sql.NullString
 	DivisionID    sql.NullString
@@ -251,6 +410,7 @@ func (q *Queries) GetMemberInfo(ctx context.Context, email string) (GetMemberInf
 		&i.Email,
 		&i.FullName,
 		&i.Nickname,
+		&i.ImageUrl,
 		&i.CommitteeID,
 		&i.CommitteeName,
 		&i.DivisionID,
@@ -270,9 +430,9 @@ func (q *Queries) GetMemberInfo(ctx context.Context, email string) (GetMemberInf
 }
 
 const getMemberInfoById = `-- name: GetMemberInfoById :one
-SELECT 
-  m.id, m.email, m.full_name, m.nickname, 
-  c.committee_id, c.committee_name, 
+SELECT
+  m.id, m.email, m.full_name, m.nickname, m.image_url,
+  c.committee_id, c.committee_name,
   d.division_id, d.division_name,
   p.position_id, p.position_name,
   h.name as house_name,
@@ -291,6 +451,7 @@ type GetMemberInfoByIdRow struct {
 	Email         string
 	FullName      string
 	Nickname      sql.NullString
+	ImageUrl      sql.NullString
 	CommitteeID   sql.NullString
 	CommitteeName sql.NullString
 	DivisionID    sql.NullString
@@ -315,6 +476,7 @@ func (q *Queries) GetMemberInfoById(ctx context.Context, id int32) (GetMemberInf
 		&i.Email,
 		&i.FullName,
 		&i.Nickname,
+		&i.ImageUrl,
 		&i.CommitteeID,
 		&i.CommitteeName,
 		&i.DivisionID,
@@ -333,6 +495,255 @@ func (q *Queries) GetMemberInfoById(ctx context.Context, id int32) (GetMemberInf
 	return i, err
 }
 
+const getMemberRoles = `-- name: GetMemberRoles :many
+SELECT r.id, r.name, r.description, mr.granted_by, mr.granted_at
+FROM member_roles mr
+JOIN roles r ON mr.role_id = r.id
+WHERE mr.member_id = ?
+`
+
+type GetMemberRolesRow struct {
+	ID          string
+	Name        string
+	Description sql.NullString
+	GrantedBy   sql.NullInt32
+	GrantedAt   sql.NullTime
+}
+
+func (q *Queries) GetMemberRoles(ctx context.Context, memberID int32) ([]GetMemberRolesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMemberRoles, memberID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMemberRolesRow
+	for rows.Next() {
+		var i GetMemberRolesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.GrantedBy,
+			&i.GrantedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMembersWithRole = `-- name: GetMembersWithRole :many
+SELECT m.id, m.email, m.full_name, m.position_id, m.committee_id, mr.granted_at
+FROM member_roles mr
+JOIN members m ON mr.member_id = m.id
+WHERE mr.role_id = ?
+ORDER BY mr.granted_at DESC
+`
+
+type GetMembersWithRoleRow struct {
+	ID          int32
+	Email       string
+	FullName    string
+	PositionID  sql.NullString
+	CommitteeID sql.NullString
+	GrantedAt   sql.NullTime
+}
+
+func (q *Queries) GetMembersWithRole(ctx context.Context, roleID string) ([]GetMembersWithRoleRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMembersWithRole, roleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMembersWithRoleRow
+	for rows.Next() {
+		var i GetMembersWithRoleRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.FullName,
+			&i.PositionID,
+			&i.CommitteeID,
+			&i.GrantedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRoleById = `-- name: GetRoleById :one
+SELECT id, name, description FROM roles WHERE id = ?
+`
+
+func (q *Queries) GetRoleById(ctx context.Context, id string) (Role, error) {
+	row := q.db.QueryRowContext(ctx, getRoleById, id)
+	var i Role
+	err := row.Scan(&i.ID, &i.Name, &i.Description)
+	return i, err
+}
+
+const getSession = `-- name: GetSession :one
+SELECT id, member_id, created_at, expires_at, last_activity, user_agent, ip_address
+FROM sessions WHERE id = ? AND expires_at > NOW()
+`
+
+func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
+	row := q.db.QueryRowContext(ctx, getSession, id)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.MemberID,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.LastActivity,
+		&i.UserAgent,
+		&i.IpAddress,
+	)
+	return i, err
+}
+
+const getSessionWithMember = `-- name: GetSessionWithMember :one
+SELECT 
+    s.id, s.member_id, s.created_at, s.expires_at, s.last_activity, s.user_agent, s.ip_address,
+    m.email, m.full_name
+FROM sessions s
+JOIN members m ON s.member_id = m.id
+WHERE s.id = ? AND s.expires_at > NOW()
+`
+
+type GetSessionWithMemberRow struct {
+	ID           string
+	MemberID     int32
+	CreatedAt    sql.NullTime
+	ExpiresAt    time.Time
+	LastActivity sql.NullTime
+	UserAgent    sql.NullString
+	IpAddress    sql.NullString
+	Email        string
+	FullName     string
+}
+
+func (q *Queries) GetSessionWithMember(ctx context.Context, id string) (GetSessionWithMemberRow, error) {
+	row := q.db.QueryRowContext(ctx, getSessionWithMember, id)
+	var i GetSessionWithMemberRow
+	err := row.Scan(
+		&i.ID,
+		&i.MemberID,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.LastActivity,
+		&i.UserAgent,
+		&i.IpAddress,
+		&i.Email,
+		&i.FullName,
+	)
+	return i, err
+}
+
+const grantRole = `-- name: GrantRole :exec
+INSERT INTO member_roles (member_id, role_id, granted_by) VALUES (?, ?, ?)
+`
+
+type GrantRoleParams struct {
+	MemberID  int32
+	RoleID    string
+	GrantedBy sql.NullInt32
+}
+
+func (q *Queries) GrantRole(ctx context.Context, arg GrantRoleParams) error {
+	_, err := q.db.ExecContext(ctx, grantRole, arg.MemberID, arg.RoleID, arg.GrantedBy)
+	return err
+}
+
+const hasRole = `-- name: HasRole :one
+SELECT EXISTS(SELECT 1 FROM member_roles WHERE member_id = ? AND role_id = ?)
+`
+
+type HasRoleParams struct {
+	MemberID int32
+	RoleID   string
+}
+
+func (q *Queries) HasRole(ctx context.Context, arg HasRoleParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, hasRole, arg.MemberID, arg.RoleID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const isAdmin = `-- name: IsAdmin :one
+SELECT EXISTS(SELECT 1 FROM member_roles WHERE member_id = ? AND role_id = 'ADMIN')
+`
+
+func (q *Queries) IsAdmin(ctx context.Context, memberID int32) (bool, error) {
+	row := q.db.QueryRowContext(ctx, isAdmin, memberID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const listAPIKeysByEmail = `-- name: ListAPIKeysByEmail :many
+SELECT api_key_id, member_email, project, allowed_origin, is_dev, is_admin, created_at, expires_at FROM api_keys WHERE member_email = ? ORDER BY created_at DESC
+`
+
+type ListAPIKeysByEmailRow struct {
+	ApiKeyID      int32
+	MemberEmail   string
+	Project       sql.NullString
+	AllowedOrigin sql.NullString
+	IsDev         bool
+	IsAdmin       bool
+	CreatedAt     sql.NullTime
+	ExpiresAt     sql.NullTime
+}
+
+func (q *Queries) ListAPIKeysByEmail(ctx context.Context, memberEmail string) ([]ListAPIKeysByEmailRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAPIKeysByEmail, memberEmail)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAPIKeysByEmailRow
+	for rows.Next() {
+		var i ListAPIKeysByEmailRow
+		if err := rows.Scan(
+			&i.ApiKeyID,
+			&i.MemberEmail,
+			&i.Project,
+			&i.AllowedOrigin,
+			&i.IsDev,
+			&i.IsAdmin,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMembers = `-- name: ListMembers :many
 SELECT
     m.id,
@@ -348,6 +759,7 @@ SELECT
     m.interests,
     m.contact_number,
     m.fb_link,
+    m.image_url,
     h.name as house_name
 FROM members m
 LEFT JOIN houses h ON m.house_id = h.id
@@ -368,6 +780,7 @@ type ListMembersRow struct {
 	Interests     sql.NullString
 	ContactNumber sql.NullString
 	FbLink        sql.NullString
+	ImageUrl      sql.NullString
 	HouseName     sql.NullString
 }
 
@@ -394,6 +807,7 @@ func (q *Queries) ListMembers(ctx context.Context) ([]ListMembersRow, error) {
 			&i.Interests,
 			&i.ContactNumber,
 			&i.FbLink,
+			&i.ImageUrl,
 			&i.HouseName,
 		); err != nil {
 			return nil, err
@@ -407,6 +821,20 @@ func (q *Queries) ListMembers(ctx context.Context) ([]ListMembersRow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const revokeRole = `-- name: RevokeRole :exec
+DELETE FROM member_roles WHERE member_id = ? AND role_id = ?
+`
+
+type RevokeRoleParams struct {
+	MemberID int32
+	RoleID   string
+}
+
+func (q *Queries) RevokeRole(ctx context.Context, arg RevokeRoleParams) error {
+	_, err := q.db.ExecContext(ctx, revokeRole, arg.MemberID, arg.RoleID)
+	return err
 }
 
 const storeAPIKey = `-- name: StoreAPIKey :exec
@@ -443,5 +871,111 @@ func (q *Queries) StoreAPIKey(ctx context.Context, arg StoreAPIKeyParams) error 
 		arg.IsAdmin,
 		arg.ExpiresAt,
 	)
+	return err
+}
+
+const updateMemberById = `-- name: UpdateMemberById :exec
+UPDATE members SET
+    full_name = ?,
+    nickname = ?,
+    email = ?,
+    position_id = ?,
+    committee_id = ?,
+    college = ?,
+    program = ?,
+    house_id = ?,
+    telegram = ?,
+    discord = ?,
+    interests = ?,
+    contact_number = ?,
+    fb_link = ?,
+    image_url = ?
+WHERE id = ?
+`
+
+type UpdateMemberByIdParams struct {
+	FullName      string
+	Nickname      sql.NullString
+	Email         string
+	PositionID    sql.NullString
+	CommitteeID   sql.NullString
+	College       sql.NullString
+	Program       sql.NullString
+	HouseID       sql.NullInt32
+	Telegram      sql.NullString
+	Discord       sql.NullString
+	Interests     sql.NullString
+	ContactNumber sql.NullString
+	FbLink        sql.NullString
+	ImageUrl      sql.NullString
+	ID            int32
+}
+
+func (q *Queries) UpdateMemberById(ctx context.Context, arg UpdateMemberByIdParams) error {
+	_, err := q.db.ExecContext(ctx, updateMemberById,
+		arg.FullName,
+		arg.Nickname,
+		arg.Email,
+		arg.PositionID,
+		arg.CommitteeID,
+		arg.College,
+		arg.Program,
+		arg.HouseID,
+		arg.Telegram,
+		arg.Discord,
+		arg.Interests,
+		arg.ContactNumber,
+		arg.FbLink,
+		arg.ImageUrl,
+		arg.ID,
+	)
+	return err
+}
+
+const updateMemberSelf = `-- name: UpdateMemberSelf :exec
+
+UPDATE members SET
+    nickname = ?,
+    telegram = ?,
+    discord = ?,
+    interests = ?,
+    contact_number = ?,
+    fb_link = ?,
+    image_url = ?
+WHERE id = ?
+`
+
+type UpdateMemberSelfParams struct {
+	Nickname      sql.NullString
+	Telegram      sql.NullString
+	Discord       sql.NullString
+	Interests     sql.NullString
+	ContactNumber sql.NullString
+	FbLink        sql.NullString
+	ImageUrl      sql.NullString
+	ID            int32
+}
+
+// Member profile update queries
+func (q *Queries) UpdateMemberSelf(ctx context.Context, arg UpdateMemberSelfParams) error {
+	_, err := q.db.ExecContext(ctx, updateMemberSelf,
+		arg.Nickname,
+		arg.Telegram,
+		arg.Discord,
+		arg.Interests,
+		arg.ContactNumber,
+		arg.FbLink,
+		arg.ImageUrl,
+		arg.ID,
+	)
+	return err
+}
+
+const updateSessionActivity = `-- name: UpdateSessionActivity :exec
+UPDATE sessions SET last_activity = NOW() WHERE id = ?
+`
+
+func (q *Queries) UpdateSessionActivity(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, updateSessionActivity, id)
 	return err
 }

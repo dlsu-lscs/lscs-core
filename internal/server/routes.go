@@ -18,9 +18,10 @@ func (s *Server) RegisterRoutes(e *echo.Echo) {
 	e.Use(middlewares.RequestLoggerMiddleware())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: s.cfg.AllowedOrigins,
-		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentLength, echo.HeaderAcceptEncoding, echo.HeaderContentType, echo.HeaderAuthorization},
+		AllowOrigins:     s.cfg.AllowedOrigins,
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentLength, echo.HeaderAcceptEncoding, echo.HeaderContentType, echo.HeaderAuthorization},
+		AllowCredentials: true, // required for cookies
 	}))
 
 	// Public routes
@@ -31,12 +32,40 @@ func (s *Server) RegisterRoutes(e *echo.Echo) {
 	// Swagger documentation
 	e.GET("/docs/*", echoSwagger.WrapHandler)
 
-	// Google OAuth protected routes
+	// --- OAuth routes (public) ---
+	authRoutes := e.Group("/auth")
+	authRoutes.GET("/google/login", s.oauthHandler.GoogleLoginHandler)
+	authRoutes.GET("/google/callback", s.oauthHandler.GoogleCallbackHandler)
+	authRoutes.POST("/logout", s.oauthHandler.LogoutHandler)
+
+	// --- Session-protected routes (Web UI) ---
+	sessionProtected := e.Group("/auth")
+	sessionProtected.Use(middlewares.SessionMiddleware(s.sessionService, s.cfg))
+	sessionProtected.GET("/me", s.memberHandler.GetMeHandler)
+	sessionProtected.PUT("/me", s.memberHandler.UpdateMeHandler)
+	sessionProtected.GET("/members/:id", s.memberHandler.GetMemberByIDHandler)
+	sessionProtected.PUT("/members/:id", s.memberHandler.UpdateMemberByIDHandler, middlewares.RequireCanEditMember(s.rbacService))
+
+	// --- Upload routes (Web UI) ---
+	uploadProtected := e.Group("/upload")
+	uploadProtected.Use(middlewares.SessionMiddleware(s.sessionService, s.cfg))
+	uploadProtected.POST("/profile-image", s.uploadHandler.GenerateUploadURLHandler)
+	uploadProtected.POST("/profile-image/complete", s.uploadHandler.CompleteUploadHandler)
+	uploadProtected.DELETE("/profile-image", s.uploadHandler.DeleteImageHandler)
+
+	// --- API Key routes (Web UI) ---
+	// Note: Authorization checks (RND AVP+) are done inline in handlers
+	apiKeyProtected := e.Group("/api-keys")
+	apiKeyProtected.Use(middlewares.SessionMiddleware(s.sessionService, s.cfg))
+	apiKeyProtected.GET("", s.authHandler.ListAPIKeys)
+	apiKeyProtected.DELETE("/:id", s.authHandler.RevokeAPIKey)
+
+	// Google OAuth protected routes (for API key generation)
 	googleAuthProtected := e.Group("")
 	googleAuthProtected.Use(middlewares.GoogleAuthMiddleware(s.cfg))
 	googleAuthProtected.POST("/request-key", s.authHandler.RequestKeyHandler)
 
-	// --- Protected routes ----
+	// --- JWT Protected routes (API Keys) ---
 	protected := e.Group("")
 	protected.Use(echojwt.WithConfig(echojwt.Config{
 		NewClaimsFunc: func(c echo.Context) jwt.Claims { return new(auth.JwtCustomClaims) },

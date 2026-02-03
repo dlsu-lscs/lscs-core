@@ -5,13 +5,17 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Config holds all application configuration
 type Config struct {
 	// Server
-	Port  int
-	GoEnv string
+	Port               int
+	GoEnv              string
+	ServerIdleTimeout  time.Duration
+	ServerReadTimeout  time.Duration
+	ServerWriteTimeout time.Duration
 
 	// Database
 	DBHost     string
@@ -20,17 +24,33 @@ type Config struct {
 	DBUsername string
 	DBPassword string
 
-	// Authentication
+	// Authentication (API Keys)
 	JWTSecret         string
 	GoogleClientID    string
 	JWTDevExpiryDays  int
 	JWTProdExpiryDays int
+
+	// OAuth (Web UI Sessions)
+	GoogleClientSecret string
+	OAuthRedirectURL   string
+
+	// Session (Web UI)
+	SessionSecret           string
+	SessionDuration         int // seconds, default 24 hours
+	SessionRememberDuration int // seconds, default 30 days
 
 	// CORS
 	AllowedOrigins []string
 
 	// Logging
 	LogLevel string
+
+	// S3/Garage Storage
+	S3Endpoint        string
+	S3Bucket          string
+	S3AccessKeyID     string
+	S3SecretAccessKey string
+	S3Region          string
 }
 
 var cfg *Config
@@ -44,8 +64,11 @@ func Load() (*Config, error) {
 
 	cfg = &Config{
 		// Server
-		Port:  getEnvInt("PORT", 8080),
-		GoEnv: getEnv("GO_ENV", "development"),
+		Port:               getEnvInt("PORT", 8080),
+		GoEnv:              getEnv("GO_ENV", "development"),
+		ServerIdleTimeout:  getEnvDuration("SERVER_IDLE_TIMEOUT", time.Minute),
+		ServerReadTimeout:  getEnvDuration("SERVER_READ_TIMEOUT", 10*time.Second),
+		ServerWriteTimeout: getEnvDuration("SERVER_WRITE_TIMEOUT", 30*time.Second),
 
 		// Database
 		DBHost:     getEnvRequired("DB_HOST"),
@@ -54,17 +77,33 @@ func Load() (*Config, error) {
 		DBUsername: getEnvRequired("DB_USERNAME"),
 		DBPassword: getEnvRequired("DB_PASSWORD"),
 
-		// Authentication
+		// Authentication (API Keys)
 		JWTSecret:         getEnvRequired("JWT_SECRET"),
 		GoogleClientID:    getEnv("GOOGLE_CLIENT_ID", ""),
 		JWTDevExpiryDays:  getEnvInt("JWT_DEV_EXPIRY_DAYS", 30),
 		JWTProdExpiryDays: getEnvInt("JWT_PROD_EXPIRY_DAYS", 365),
+
+		// OAuth (Web UI Sessions)
+		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
+		OAuthRedirectURL:   getEnv("OAUTH_REDIRECT_URL", "http://localhost:8080/auth/google/callback"),
+
+		// Session (Web UI)
+		SessionSecret:           getEnv("SESSION_SECRET", ""),
+		SessionDuration:         getEnvInt("SESSION_DURATION", 86400),            // 24 hours
+		SessionRememberDuration: getEnvInt("SESSION_REMEMBER_DURATION", 2592000), // 30 days
 
 		// CORS
 		AllowedOrigins: getEnvList("ALLOWED_ORIGINS", []string{"http://localhost:3000"}),
 
 		// Logging
 		LogLevel: getEnv("LOG_LEVEL", "info"),
+
+		// S3/Garage Storage
+		S3Endpoint:        getEnv("S3_ENDPOINT", ""),
+		S3Bucket:          getEnv("S3_BUCKET", "lscs-core"),
+		S3AccessKeyID:     getEnv("S3_ACCESS_KEY", ""),
+		S3SecretAccessKey: getEnv("S3_SECRET_KEY", ""),
+		S3Region:          getEnv("S3_REGION", "garage"),
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -90,6 +129,14 @@ func (c *Config) IsDevelopment() bool {
 // IsProduction returns true if running in production mode
 func (c *Config) IsProduction() bool {
 	return c.GoEnv == "production" || c.GoEnv == "prod"
+}
+
+// FrontendURL returns the first allowed origin (used for redirects after OAuth)
+func (c *Config) FrontendURL() string {
+	if len(c.AllowedOrigins) > 0 {
+		return c.AllowedOrigins[0]
+	}
+	return "http://localhost:3000"
 }
 
 // DSN returns the MySQL connection string
@@ -170,6 +217,15 @@ func getEnvList(key string, defaultValue []string) []string {
 		}
 		if len(result) > 0 {
 			return result
+		}
+	}
+	return defaultValue
+}
+
+func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
+	if value := os.Getenv(key); value != "" {
+		if d, err := time.ParseDuration(value); err == nil {
+			return d
 		}
 	}
 	return defaultValue

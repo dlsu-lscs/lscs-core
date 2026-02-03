@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -187,4 +188,137 @@ func (h *Handler) RequestKeyHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+// ListAPIKeysResponse represents an API key in the list response
+type ListAPIKeysResponse struct {
+	APIKeyID      int32  `json:"api_key_id"`
+	MemberEmail   string `json:"member_email"`
+	Project       string `json:"project,omitempty"`
+	AllowedOrigin string `json:"allowed_origin,omitempty"`
+	IsDev         bool   `json:"is_dev"`
+	IsAdmin       bool   `json:"is_admin"`
+	CreatedAt     string `json:"created_at"`
+	ExpiresAt     string `json:"expires_at,omitempty"`
+}
+
+// ListAPIKeys returns all API keys for the authenticated user
+// @Summary List API Keys
+// @Description Get all API keys belonging to the authenticated RND member
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Success 200 {array} ListAPIKeysResponse "List of API keys"
+// @Failure 401 {object} helpers.ErrorResponse "Unauthorized"
+// @Failure 403 {object} helpers.ErrorResponse "Forbidden - RND committee only"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security SessionAuth
+// @Router /api-keys [get]
+func (h *Handler) ListAPIKeys(c echo.Context) error {
+	ctx := c.Request().Context()
+	dbconn := h.dbService.GetConnection()
+	q := repository.New(dbconn)
+
+	// Get user email from context (set by session middleware)
+	email, ok := c.Get("user_email").(string)
+	if !ok || email == "" {
+		return helpers.ErrUnauthorized(c, "")
+	}
+
+	// Check RND AVP+ authorization
+	isAuthorized := helpers.AuthorizeIfRNDAndAVP(ctx, h.dbService, email)
+	if !isAuthorized {
+		log.Error().Str("email", email).Msg("user has unauthorized position or committee for API key management")
+		return helpers.ErrForbidden(c, "RND AVP+ position required for API key management")
+	}
+
+	apiKeys, err := q.ListAPIKeysByEmail(ctx, email)
+	if err != nil {
+		log.Error().Err(err).Str("email", email).Msg("failed to list API keys")
+		return helpers.ErrInternal(c, "Failed to retrieve API keys")
+	}
+
+	// Transform to response format
+	response := make([]ListAPIKeysResponse, len(apiKeys))
+	for i, key := range apiKeys {
+		resp := ListAPIKeysResponse{
+			APIKeyID:    key.ApiKeyID,
+			MemberEmail: key.MemberEmail,
+			IsDev:       key.IsDev,
+			IsAdmin:     key.IsAdmin,
+		}
+
+		if key.CreatedAt.Valid {
+			resp.CreatedAt = key.CreatedAt.Time.Format("2006-01-02T15:04:05Z07:00")
+		}
+		if key.Project.Valid {
+			resp.Project = key.Project.String
+		}
+		if key.AllowedOrigin.Valid {
+			resp.AllowedOrigin = key.AllowedOrigin.String
+		}
+		if key.ExpiresAt.Valid {
+			resp.ExpiresAt = key.ExpiresAt.Time.Format("2006-01-02T15:04:05Z07:00")
+		}
+
+		response[i] = resp
+	}
+
+	return c.JSON(http.StatusOK, response)
+}
+
+// RevokeAPIKey deletes an API key by ID
+// @Summary Revoke API Key
+// @Description Delete/revoke an API key by ID (must belong to authenticated user)
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param id path int true "API Key ID"
+// @Success 200 {object} map[string]string "Success message"
+// @Failure 401 {object} helpers.ErrorResponse "Unauthorized"
+// @Failure 403 {object} helpers.ErrorResponse "Forbidden - not owner or RND"
+// @Failure 404 {object} helpers.ErrorResponse "Not found"
+// @Failure 500 {object} helpers.ErrorResponse "Internal server error"
+// @Security SessionAuth
+// @Router /api-keys/{id} [delete]
+func (h *Handler) RevokeAPIKey(c echo.Context) error {
+	ctx := c.Request().Context()
+	dbconn := h.dbService.GetConnection()
+	q := repository.New(dbconn)
+
+	// Get user email from context
+	email, ok := c.Get("user_email").(string)
+	if !ok || email == "" {
+		return helpers.ErrUnauthorized(c, "")
+	}
+
+	// Check RND AVP+ authorization
+	isAuthorized := helpers.AuthorizeIfRNDAndAVP(ctx, h.dbService, email)
+	if !isAuthorized {
+		log.Error().Str("email", email).Msg("user has unauthorized position or committee for API key management")
+		return helpers.ErrForbidden(c, "RND AVP+ position required for API key management")
+	}
+
+	// Parse API key ID from URL
+	apiKeyID, err := strconv.ParseInt(c.Param("id"), 10, 32)
+	if err != nil {
+		return helpers.ErrBadRequest(c, "Invalid API key ID")
+	}
+
+	// Delete the key (will only succeed if member_email matches)
+	err = q.DeleteAPIKeyById(ctx, repository.DeleteAPIKeyByIdParams{
+		ApiKeyID:    int32(apiKeyID),
+		MemberEmail: email,
+	})
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return helpers.ErrNotFound(c, "API key not found or you don't have permission to revoke it")
+		}
+		log.Error().Err(err).Int64("api_key_id", apiKeyID).Str("email", email).Msg("failed to revoke API key")
+		return helpers.ErrInternal(c, "Failed to revoke API key")
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "API key revoked successfully",
+	})
 }
