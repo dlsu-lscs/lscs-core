@@ -1,30 +1,75 @@
----
 name: Test
+
 on:
   push:
     branches:
       - main
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - 'web/**'
+      - '!.github/workflows/**'
   pull_request:
     branches:
       - main
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - 'web/**'
+      - '!.github/workflows/**'
   workflow_dispatch:
 
 jobs:
-  build:
+  api-test:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.24.x'
+          cache: true
+          cache-dependency-path: go.sum
 
-      - name: Build
+      - name: Build API
         run: make build
-        # run: go build -v ./...
 
     # - name: Test with the Go CLI
     #   run: make test
     #   run: go test ./...
 
+  web-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: ./web
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint Web
+        working-directory: ./web
+        run: pnpm lint
+
+      - name: Type check Web
+        working-directory: ./web
+        run: pnpm type-check
