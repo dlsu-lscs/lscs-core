@@ -16,4 +16,9 @@ jobs:
     steps:
       - name: Trigger Dokploy Web Deployment
         run: |
-          curl --request GET '${{ secrets.DOKPLOY_WEB_WEBHOOK_URL }}'
+          curl --request POST \
+            '${{ secrets.DOKPLOY_WEB_API_URL }}/api/application.deploy' \
+            --header 'accept: application/json' \
+            --header 'x-api-key: ${{ secrets.DOKPLOY_WEB_API_KEY }}' \
+            --header 'Content-Type: application/json' \
+            --data '{"applicationId": "${{ secrets.DOKPLOY_WEB_API_APPLICATION_ID }}"}'
