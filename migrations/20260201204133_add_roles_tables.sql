@@ -1,14 +1,14 @@
 -- +goose Up
 -- +goose StatementBegin
-
--- roles table stores system-level roles (separate from position hierarchy)
 CREATE TABLE roles (
     id VARCHAR(20) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT
 );
+-- +goose StatementEnd
 
--- member_roles is a many-to-many relationship between members and roles
+-- +goose Up
+-- +goose StatementBegin
 CREATE TABLE member_roles (
     member_id INT NOT NULL,
     role_id VARCHAR(20) NOT NULL,
@@ -19,18 +19,17 @@ CREATE TABLE member_roles (
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
     FOREIGN KEY (granted_by) REFERENCES members(id) ON DELETE SET NULL
 );
+-- +goose StatementEnd
 
--- seed initial roles
+-- +goose Up
+-- +goose StatementBegin
 INSERT INTO roles (id, name, description) VALUES
     ('ADMIN', 'Administrator', 'Full system access, can manage all members and settings'),
     ('MODERATOR', 'Moderator', 'Can moderate content and manage basic member issues');
-
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-
 DROP TABLE IF EXISTS member_roles;
 DROP TABLE IF EXISTS roles;
-
 -- +goose StatementEnd
