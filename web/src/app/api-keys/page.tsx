@@ -16,17 +16,14 @@ export default function APIKeysPage() {
   const queryClient = useQueryClient()
   const [keyToRevoke, setKeyToRevoke] = useState<APIKey | null>(null)
 
-  // Check if user is RND committee member
   const isRND = user?.committee_id === "RND"
 
-  // Fetch API keys
   const { data: apiKeys, isLoading, error } = useQuery({
     queryKey: ["api-keys"],
     queryFn: api.listApiKeys,
     enabled: isRND,
   })
 
-  // Revoke mutation
   const revokeMutation = useMutation({
     mutationFn: (id: number) => api.revokeApiKey(id),
     onSuccess: () => {
@@ -35,19 +32,18 @@ export default function APIKeysPage() {
     },
   })
 
-  // Redirect non-RND users
   if (!isRND) {
     return (
       <AuthenticatedLayout>
         <div className="container mx-auto p-6">
-        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded flex items-start gap-2">
-          <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-semibold">Access Denied</p>
-            <p className="text-sm">API Key management is only available to RND committee members.</p>
+          <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-semibold">Access Denied</p>
+              <p className="text-sm">API Key management is only available to RND committee members.</p>
+            </div>
           </div>
         </div>
-      </div>
       </AuthenticatedLayout>
     )
   }
@@ -79,82 +75,130 @@ export default function APIKeysPage() {
   return (
     <AuthenticatedLayout>
       <div className="container mx-auto p-6 max-w-4xl">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">API Keys</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your API keys for external projects
-          </p>
-        </div>
-        <Button onClick={() => router.push("/request-key")}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create API Key
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : error ? (
-        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded flex items-start gap-2">
-          <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+        <div className="flex justify-between items-center mb-6">
           <div>
-            <p className="font-semibold">Error</p>
-            <p className="text-sm">Failed to load API keys. Please try again later.</p>
+            <h1 className="text-3xl font-bold tracking-tight">API Keys</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage your API keys for external projects
+            </p>
           </div>
+          <Button onClick={() => router.push("/request-key")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create API Key
+          </Button>
         </div>
-      ) : apiKeys && apiKeys.length > 0 ? (
-        <div className="space-y-4">
-          {apiKeys.map((key) => (
-            <Card key={key.api_key_id}>
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-2">
-                    <Key className="h-5 w-5 text-muted-foreground" />
-                    <CardTitle className="text-lg">
-                      {key.project || "Unnamed Project"}
-                    </CardTitle>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-semibold">Error</p>
+              <p className="text-sm">Failed to load API keys. Please try again later.</p>
+            </div>
+          </div>
+        ) : apiKeys && apiKeys.length > 0 ? (
+          <div className="space-y-4">
+            {apiKeys.map((key) => (
+              <Card key={key.api_key_id}>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                      <Key className="h-5 w-5 text-muted-foreground" />
+                      <CardTitle className="text-lg">
+                        {key.project || "Unnamed Project"}
+                      </CardTitle>
+                    </div>
+                    {getKeyTypeLabel(key)}
                   </div>
-                  {getKeyTypeLabel(key)}
-                </div>
+                  <CardDescription>
+                    Created on {formatDate(key.created_at)}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    {key.allowed_origin && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Allowed Origin:</span>
+                        <span className="font-mono">{key.allowed_origin}</span>
+                      </div>
+                    )}
+                    {key.expires_at && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Expires:</span>
+                        <span>{formatDate(key.expires_at)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Key ID:</span>
+                      <span className="font-mono text-xs">{key.api_key_id}</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setKeyToRevoke(key)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Revoke
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center h-64">
+              <Key className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground text-center mb-4">
+                You haven&apos;t created any API keys yet.
+              </p>
+              <Button onClick={() => router.push("/request-key")}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Your First API Key
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {keyToRevoke && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Revoke API Key</CardTitle>
                 <CardDescription>
-                  Created on {formatDate(key.created_at)}
+                  Are you sure you want to revoke the API key for &quot;{keyToRevoke?.project || "Unnamed Project"}? 
+                  This action cannot be undone. Applications using this key will stop working immediately.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  {key.allowed_origin && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Allowed Origin:</span>
-                      <span className="font-mono">{key.allowed_origin}</span>
-                    </div>
+              <CardContent className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setKeyToRevoke(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleRevoke}
+                  disabled={revokeMutation.isPending}
+                >
+                  {revokeMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Revoking...
+                    </>
+                  ) : (
+                    "Revoke Key"
                   )}
-                  {key.expires_at && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Expires:</span>
-                      <span>{formatDate(key.expires_at)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Key ID:</span>
-                    <span className="font-mono text-xs">{key.api_key_id}</span>
-                  </div>
-                </div>
-                <div className="mt-4 flex justify-end">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setKeyToRevoke(key)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Revoke
-                  </Button>
-                </div>
+                </Button>
               </CardContent>
-        </Card>
+            </Card>
+          </div>
+        )}
       </div>
-      </AuthenticatedLayout>
-    </div>
+    </AuthenticatedLayout>
   )
 }
