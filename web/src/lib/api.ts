@@ -2,6 +2,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${endpoint}`, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers
