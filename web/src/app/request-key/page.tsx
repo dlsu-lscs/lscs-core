@@ -98,8 +98,9 @@ export default function RequestKeyPage() {
       const response = await api.requestKey(formData)
       setKeyResponse(response)
       setSubmitted(true)
-    } catch (err: any) {
-      setError(err.message || "Failed to create API key")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create API key"
+      setError(message)
     } finally {
       setLoading(false)
     }
