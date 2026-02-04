@@ -5,19 +5,22 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 
 export function useAuth() {
-    const { user, setUser, isAuthenticated, isLoading, logout } =
+    const { user, setUser, isLoading: isStoreLoading, logout } =
         useAuthStore();
     const queryClient = useQueryClient();
 
     const { data: member, isLoading: isMemberLoading } = useQuery({
         queryKey: ["member", "me"],
         queryFn: () => api.getMe(),
-        enabled: isAuthenticated,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        retry: false,
+        staleTime: 5 * 60 * 1000,
     });
 
+    const isAuthenticated = !!member && !member.error;
+    const isLoading = isStoreLoading || isMemberLoading;
+
     React.useEffect(() => {
-        if (member) {
+        if (member && !member.error) {
             setUser(member);
         }
     }, [member, setUser]);
@@ -45,7 +48,7 @@ export function useAuth() {
 
     return {
         user,
-        isLoading: isLoading || isMemberLoading,
+        isLoading,
         isAuthenticated,
         login: loginMutation.mutateAsync,
         logout: logoutMutation.mutateAsync,
