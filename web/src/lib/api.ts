@@ -62,7 +62,14 @@ export const api = {
   // API Keys
   listApiKeys: () => fetchAPI<APIKey[]>('/api-keys'),
 
-  revokeApiKey: (id: number) => fetchAPI<{ message: string }>(`/api-keys/${id}`, { method: 'DELETE' })
+  revokeApiKey: (id: number) => fetchAPI<{ message: string }>(`/api-keys/${id}`, { method: 'DELETE' }),
+
+  // API Key Request (uses Google OAuth, not session)
+  requestKey: (data: RequestKeyRequest) =>
+    fetchAPI<RequestKeyResponse>('/request-key', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
 };
 
 // Types
@@ -74,6 +81,19 @@ export interface APIKey {
   is_dev: boolean;
   is_admin: boolean;
   created_at: string;
+  expires_at?: string;
+}
+
+export interface RequestKeyRequest {
+  project?: string;
+  allowed_origin?: string;
+  is_dev: boolean;
+  is_admin: boolean;
+}
+
+export interface RequestKeyResponse {
+  email: string;
+  api_key: string;
   expires_at?: string;
 }
 
