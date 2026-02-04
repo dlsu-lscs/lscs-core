@@ -34,6 +34,7 @@ export function useAuth() {
         onSuccess: () => {
             queryClient.clear();
             logout();
+            window.location.href = "/login";
         },
     });
 
