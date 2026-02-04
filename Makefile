@@ -64,7 +64,7 @@ watch:
 
 # Database migrations (requires goose: go install github.com/pressly/goose/v3/cmd/goose@latest)
 GOOSE_DRIVER=mysql
-GOOSE_DBSTRING=$(DB_USERNAME):$(DB_PASSWORD)@tcp($(DB_HOST):$(DB_PORT))/$(DB_DATABASE)?parseTime=true
+GOOSE_DBSTRING=$(DB_USERNAME):$(DB_PASSWORD)@tcp($(DB_HOST):$(DB_PORT))/$(DB_DATABASE)?parseTime=true&multiStatements=true
 GOOSE_MIGRATION_DIR=./migrations
 
 migrate-up:
