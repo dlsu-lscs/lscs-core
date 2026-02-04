@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Loader2, Key, Trash2, Plus, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { AuthenticatedLayout } from "@/components/authenticated-layout"
 
 export default function APIKeysPage() {
   const { user } = useAuth()
@@ -37,7 +38,8 @@ export default function APIKeysPage() {
   // Redirect non-RND users
   if (!isRND) {
     return (
-      <div className="container mx-auto p-6">
+      <AuthenticatedLayout>
+        <div className="container mx-auto p-6">
         <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded flex items-start gap-2">
           <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
           <div>
@@ -46,6 +48,7 @@ export default function APIKeysPage() {
           </div>
         </div>
       </div>
+      </AuthenticatedLayout>
     )
   }
 
@@ -74,7 +77,8 @@ export default function APIKeysPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <AuthenticatedLayout>
+      <div className="container mx-auto p-6 max-w-4xl">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">API Keys</h1>
@@ -148,57 +152,9 @@ export default function APIKeysPage() {
                   </Button>
                 </div>
               </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center h-64">
-            <Key className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center mb-4">
-              You haven&apos;t created any API keys yet.
-            </p>
-            <Button onClick={() => router.push("/request-key")}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Your First API Key
-            </Button>
-          </CardContent>
         </Card>
-      )}
-
-      {/* Confirmation Dialog - Simple Modal */}
-      {keyToRevoke && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Revoke API Key</CardTitle>
-              <CardDescription>
-                Are you sure you want to revoke the API key for &quot;{keyToRevoke?.project || "Unnamed Project"}? 
-                This action cannot be undone. Applications using this key will stop working immediately.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setKeyToRevoke(null)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleRevoke}
-                disabled={revokeMutation.isPending}
-              >
-                {revokeMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Revoking...
-                  </>
-                ) : (
-                  "Revoke Key"
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      </div>
+      </AuthenticatedLayout>
     </div>
   )
 }

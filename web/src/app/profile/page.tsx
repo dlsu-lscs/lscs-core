@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useQueryClient } from "@tanstack/react-query"
 import { Loader2, Upload, Trash2 } from "lucide-react"
+import { AuthenticatedLayout } from "@/components/authenticated-layout"
 
 export default function ProfilePage() {
   const { user, updateProfile } = useAuth()
@@ -79,7 +80,8 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <AuthenticatedLayout>
+      <div className="max-w-2xl mx-auto space-y-8">
       <div>
         <h1 className="text-3xl font-bold">Profile</h1>
         <p className="text-muted-foreground mt-2">
@@ -275,10 +277,10 @@ export default function ProfilePage() {
               <Button type="submit" className="w-full">
                 Save Changes
               </Button>
-            )}
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+        )}
+      </form>
+    </CardContent>
+  </Card>
+    </AuthenticatedLayout>
   )
 }
