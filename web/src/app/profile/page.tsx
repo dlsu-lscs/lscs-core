@@ -277,10 +277,11 @@ export default function ProfilePage() {
               <Button type="submit" className="w-full">
                 Save Changes
               </Button>
-        )}
-      </form>
-    </CardContent>
-  </Card>
+            )}
+          </form>
+        </CardContent>
+        </Card>
+      </div>
     </AuthenticatedLayout>
   )
 }
