@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { Suspense, useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { api, RequestKeyRequest, RequestKeyResponse } from "@/lib/api"
@@ -12,7 +12,7 @@ import { AuthenticatedLayout } from "@/components/authenticated-layout"
 
 type KeyType = "dev" | "prod"
 
-export default function RequestKeyPage() {
+function RequestKeyContent() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -306,5 +306,21 @@ export default function RequestKeyPage() {
         </Card>
       </div>
     </AuthenticatedLayout>
+  )
+}
+
+function RequestKeyLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  )
+}
+
+export default function RequestKeyPage() {
+  return (
+    <Suspense fallback={<RequestKeyLoading />}>
+      <RequestKeyContent />
+    </Suspense>
   )
 }
