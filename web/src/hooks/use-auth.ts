@@ -16,11 +16,11 @@ export function useAuth() {
         staleTime: 5 * 60 * 1000,
     });
 
-    const isAuthenticated = !!member && !member.error;
+    const isAuthenticated = !!member;
     const isLoading = isStoreLoading || isMemberLoading;
 
     React.useEffect(() => {
-        if (member && !member.error) {
+        if (member) {
             setUser(member);
         }
     }, [member, setUser]);
