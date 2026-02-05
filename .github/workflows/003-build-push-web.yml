@@ -1,3 +1,4 @@
+---
 name: Build and Push Web
 
 on:
@@ -18,10 +19,6 @@ permissions:
 jobs:
   build-push-web:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: ./web
 
     steps:
       - name: Checkout code
@@ -68,7 +65,7 @@ jobs:
         with:
           image-ref: ghcr.io/${{ github.repository }}-web:latest
           format: 'sarif'
-          output: './trivy-web-results.sarif'
+          output: './web/trivy-web-results.sarif'
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
         continue-on-error: true
@@ -78,4 +75,4 @@ jobs:
         if: always()
         with:
           sarif_file: './web/trivy-web-results.sarif'
-          category: '/web/Dockerfile'
+          category: './web/Dockerfile'
