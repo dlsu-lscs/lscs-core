@@ -5,6 +5,6 @@
 
 ## 2. Verify Root Page Works
 
-- [ ] 2.1 Test root page redirects to `/dashboard` when authenticated
-- [ ] 2.2 Test root page redirects to `/login` when not authenticated
-- [ ] 2.3 Verify loading spinner shows during hydration
+- [x] 2.1 Test root page redirects to `/dashboard` when authenticated
+- [x] 2.2 Test root page redirects to `/login` when not authenticated
+- [x] 2.3 Verify loading spinner shows during hydration
