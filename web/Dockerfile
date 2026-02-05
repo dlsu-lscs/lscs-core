@@ -6,6 +6,12 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
+# Build arguments
+ARG NEXT_PUBLIC_API_URL
+
+# Set env var at build time
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 # Copy package files
 COPY package.json pnpm-lock.yaml* ./
 
