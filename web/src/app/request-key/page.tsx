@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, Copy, ArrowLeft, AlertCircle } from "lucide-react"
 import { AuthenticatedLayout } from "@/components/authenticated-layout"
 
-type KeyType = "dev" | "prod" | "admin"
+type KeyType = "dev" | "prod"
 
 export default function RequestKeyPage() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth()
@@ -27,7 +27,6 @@ export default function RequestKeyPage() {
     project: "",
     allowed_origin: "",
     is_dev: false,
-    is_admin: false,
   })
 
   useEffect(() => {
@@ -56,8 +55,7 @@ export default function RequestKeyPage() {
     setFormData((prev) => ({
       ...prev,
       is_dev: type === "dev",
-      is_admin: type === "admin",
-      allowed_origin: type === "admin" ? "" : prev.allowed_origin,
+      allowed_origin: type === "dev" ? prev.allowed_origin : "",
     }))
     setError(null)
   }
@@ -67,7 +65,7 @@ export default function RequestKeyPage() {
       if (formData.allowed_origin && !formData.allowed_origin.startsWith("http://localhost")) {
         return "For dev keys, allowed_origin must start with http://localhost"
       }
-    } else if (!formData.is_admin) {
+    } else {
       if (!formData.allowed_origin) {
         return "allowed_origin is required for production keys"
       }
@@ -241,7 +239,7 @@ export default function RequestKeyPage() {
                     <input
                       type="radio"
                       name="keyType"
-                      checked={!formData.is_dev && !formData.is_admin}
+                      checked={!formData.is_dev}
                       onChange={() => handleKeyTypeChange("prod")}
                     />
                     <span className="text-sm">Production</span>
@@ -255,43 +253,32 @@ export default function RequestKeyPage() {
                     />
                     <span className="text-sm">Development</span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="keyType"
-                      checked={formData.is_admin}
-                      onChange={() => handleKeyTypeChange("admin")}
-                    />
-                    <span className="text-sm">Admin</span>
-                  </label>
                 </div>
               </div>
 
-              {!formData.is_admin && (
-                <div>
-                  <label className="text-sm font-medium">
-                    {formData.is_dev ? "Allowed Origin (for dev, localhost only)" : "Allowed Origin (Required for production)"}
-                  </label>
-                  <Input
-                    value={formData.allowed_origin}
-                    onChange={(e) =>
-                      setFormData({ ...formData, allowed_origin: e.target.value })
-                    }
-                    placeholder={formData.is_dev ? "http://localhost:3000" : "https://example.com"}
-                    className="mt-1"
-                  />
-                  {formData.is_dev && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Must start with http://localhost
-                    </p>
-                  )}
-                  {!formData.is_dev && !formData.is_admin && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Must be a valid HTTPS URL, no localhost
-                    </p>
-                  )}
-                </div>
-              )}
+              <div>
+                <label className="text-sm font-medium">
+                  {formData.is_dev ? "Allowed Origin (for dev, localhost only)" : "Allowed Origin (Required for production)"}
+                </label>
+                <Input
+                  value={formData.allowed_origin}
+                  onChange={(e) =>
+                    setFormData({ ...formData, allowed_origin: e.target.value })
+                  }
+                  placeholder={formData.is_dev ? "http://localhost:3000" : "https://example.com"}
+                  className="mt-1"
+                />
+                {formData.is_dev && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Must start with http://localhost
+                  </p>
+                )}
+                {!formData.is_dev && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Must be a valid HTTPS URL, no localhost
+                  </p>
+                )}
+              </div>
 
               {error && (
                 <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded flex items-start gap-2">

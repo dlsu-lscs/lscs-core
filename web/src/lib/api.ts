@@ -88,7 +88,6 @@ export interface RequestKeyRequest {
   project?: string;
   allowed_origin?: string;
   is_dev: boolean;
-  is_admin: boolean;
 }
 
 export interface RequestKeyResponse {

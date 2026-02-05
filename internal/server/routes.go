@@ -60,10 +60,11 @@ func (s *Server) RegisterRoutes(e *echo.Echo) {
 	apiKeyProtected.GET("", s.authHandler.ListAPIKeys)
 	apiKeyProtected.DELETE("/:id", s.authHandler.RevokeAPIKey)
 
-	// Google OAuth protected routes (for API key generation)
-	googleAuthProtected := e.Group("")
-	googleAuthProtected.Use(middlewares.GoogleAuthMiddleware(s.cfg))
-	googleAuthProtected.POST("/request-key", s.authHandler.RequestKeyHandler)
+	// --- API Key Request routes (Web UI) ---
+	// Uses session-based auth instead of Bearer tokens for web UI compatibility
+	apiRequestKeyProtected := e.Group("/request-key")
+	apiRequestKeyProtected.Use(middlewares.SessionMiddleware(s.sessionService, s.cfg))
+	apiRequestKeyProtected.POST("", s.authHandler.RequestKeyHandler)
 
 	// --- JWT Protected routes (API Keys) ---
 	protected := e.Group("")
